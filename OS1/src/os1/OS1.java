@@ -15,7 +15,13 @@ public class OS1 {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
+        new Thread(new Server()).start();
+        new Thread(new Client()).start();
+        try {
+            Thread.sleep(100);
+        } catch (Exception e) {
+        }
+        System.exit(0);
     }
-    
+
 }
