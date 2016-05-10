@@ -36,7 +36,16 @@ public class ClientListener implements Runnable {
         String msg;
         try {
             while ((msg = in.readLine()) != null) {
-                //search the number in cache/db and return the answer (or random if not found)
+
+                /* ask the cache thread if x is there
+                   if not, 
+                   ask a reader thread from a threadpool to check in db
+                   else,
+                   generate new one
+                
+                -- also need to update cache/db at a certain time
+                
+                 */
                 out.println(Integer.parseInt(msg) + 1);
                 out.flush();
             }

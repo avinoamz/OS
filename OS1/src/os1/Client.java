@@ -9,6 +9,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 
 /**
  *
@@ -18,6 +21,7 @@ public class Client implements Runnable {
 
     private static int userNumberPool = 0;
 
+    private int[] probability = new int[1000];
     private int R1, R2;
     String filename;
     private int userNum;
@@ -33,6 +37,25 @@ public class Client implements Runnable {
         this.R1 = R1;
         this.R2 = R2;
         this.filename = filename;
+        String content;
+        String[] contentArr;
+
+        try {
+            content = new String(Files.readAllBytes(Paths.get("file.txt")));
+            contentArr = content.split(",");
+            int location = 0;
+            int currNumber = R1;
+            for (int i = 2; i < contentArr.length; i++) {
+                int amount = (int) (Double.parseDouble(contentArr[i]) * 1000);
+                for (int j = 0; j < amount; j++) {
+                    probability[location++] = currNumber;
+                }
+                currNumber++;
+            }
+        } catch (Exception e) {
+            System.out.println("Error reading file.");
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -41,10 +64,12 @@ public class Client implements Runnable {
             socket = new Socket("localhost", 45000);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream());
+
+            // lock?
             userNum = userNumberPool++;
 
             while (keepRunning) {
-                num = (int) (Math.random() * 100);
+                num = probability[(int) (Math.random() * 1000)];
                 System.out.println("User: " + userNum + ": sending " + num);
                 out.println("" + num);
                 out.flush();
