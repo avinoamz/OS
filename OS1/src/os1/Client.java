@@ -17,14 +17,23 @@ import java.net.Socket;
 public class Client implements Runnable {
 
     private static int userNumberPool = 0;
+
+    private int R1, R2;
+    String filename;
     private int userNum;
     private Socket socket;
     private BufferedReader in;
     private PrintWriter out;
-    private double num;
+    private int num;
     private String strResponse;
-    private double doubleResponse;
+    private int intResponse;
     private boolean keepRunning = true;
+
+    public Client(int R1, int R2, String filename) {
+        this.R1 = R1;
+        this.R2 = R2;
+        this.filename = filename;
+    }
 
     @Override
     public void run() {
@@ -35,17 +44,17 @@ public class Client implements Runnable {
             userNum = userNumberPool++;
 
             while (keepRunning) {
-                num = Math.random() * 10;
-                num = Math.floor(num * 100) / 100;
+                num = (int) (Math.random() * 100);
                 System.out.println("User: " + userNum + ": sending " + num);
                 out.println("" + num);
                 out.flush();
                 strResponse = in.readLine();
-                doubleResponse = Math.floor(Double.parseDouble(strResponse) * 100) / 100;
-                System.out.println("User: " + userNum + ": got reply: " + doubleResponse + " for query " + num);
+                intResponse = Integer.parseInt(strResponse);
+                System.out.println("User: " + userNum + ": got reply: " + intResponse + " for query " + num);
             }
         } catch (Exception e) {
             System.out.println("Client Socket Error.");
+            e.printStackTrace();
         }
     }
 

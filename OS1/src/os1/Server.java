@@ -15,6 +15,15 @@ import java.net.Socket;
 public class Server implements Runnable {
 
     private ServerSocket serverSocket;
+    private int S, C, M, L, Y;
+
+    public Server(int S, int C, int M, int L, int Y) {
+        this.S = S;
+        this.C = C;
+        this.M = M;
+        this.L = L;
+        this.Y = Y;
+    }
 
     @Override
     public void run() {

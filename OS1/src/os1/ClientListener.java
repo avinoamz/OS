@@ -36,7 +36,8 @@ public class ClientListener implements Runnable {
         String msg;
         try {
             while ((msg = in.readLine()) != null) {
-                out.println(Double.parseDouble(msg) + 1);
+                //search the number in cache/db and return the answer (or random if not found)
+                out.println(Integer.parseInt(msg) + 1);
                 out.flush();
             }
         } catch (Exception e) {
