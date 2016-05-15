@@ -7,7 +7,6 @@ package os1;
 
 public class Data {
 
-    // blabla
     private int y, z;
 
     public Data() {

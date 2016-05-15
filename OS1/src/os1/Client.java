@@ -71,8 +71,12 @@ public class Client implements Runnable {
             while (keepRunning) {
                 num = probability[(int) (Math.random() * 1000)];
                 System.out.println("User: " + userNum + ": sending " + num);
+                
+                
                 out.println("" + num);
                 out.flush();
+                
+                
                 strResponse = in.readLine();
                 intResponse = Integer.parseInt(strResponse);
                 System.out.println("User: " + userNum + ": got reply: " + intResponse + " for query " + num);

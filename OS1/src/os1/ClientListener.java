@@ -37,7 +37,8 @@ public class ClientListener implements Runnable {
         try {
             while ((msg = in.readLine()) != null) {
 
-                /* ask the cache thread if x is there
+                /* 
+                   ask the cache thread if x is there
                    if not, 
                    ask a reader thread from a threadpool to check in db
                    else,
