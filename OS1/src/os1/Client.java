@@ -11,7 +11,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
@@ -20,7 +20,7 @@ import java.util.Arrays;
 public class Client implements Runnable {
 
     private static int userNumberPool = 0;
-
+    private final ReentrantLock lock = new ReentrantLock(true);
     private int[] probability = new int[1000];
     private int R1, R2;
     String filename;
@@ -39,6 +39,8 @@ public class Client implements Runnable {
         this.filename = filename;
         String content;
         String[] contentArr;
+        // lock?
+        userNum = getNumber();
 
         try {
             content = new String(Files.readAllBytes(Paths.get("file.txt")));
@@ -58,6 +60,15 @@ public class Client implements Runnable {
         }
     }
 
+    private int getNumber() {
+        lock.lock();
+        try {
+            return userNumberPool++;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     @Override
     public void run() {
         try {
@@ -65,18 +76,13 @@ public class Client implements Runnable {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream());
 
-            // lock?
-            userNum = userNumberPool++;
-
             while (keepRunning) {
                 num = probability[(int) (Math.random() * 1000)];
                 System.out.println("User: " + userNum + ": sending " + num);
-                
-                
+
                 out.println("" + num);
                 out.flush();
-                
-                
+
                 strResponse = in.readLine();
                 intResponse = Integer.parseInt(strResponse);
                 System.out.println("User: " + userNum + ": got reply: " + intResponse + " for query " + num);
