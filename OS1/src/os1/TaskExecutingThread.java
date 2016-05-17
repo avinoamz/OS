@@ -30,6 +30,7 @@ public class TaskExecutingThread extends Thread {
                 Runnable runnable = (Runnable) taskQueue.dequeue();
                 runnable.run();
             } catch (InterruptedException e) {
+                System.out.println("TaskExecutingThread crashed");
             }
         }
     }

@@ -44,7 +44,6 @@ public class BlockingQueue {
 
     //
     // needed?
-    
     public boolean isEmpty() {
         lock.lock();
         try {
