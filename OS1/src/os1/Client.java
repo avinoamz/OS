@@ -5,9 +5,8 @@
  */
 package os1;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -26,10 +25,9 @@ public class Client implements Runnable {
     String filename;
     private int userNum;
     private Socket socket;
-    private BufferedReader in;
-    private PrintWriter out;
+    private ObjectInputStream in;
+    private ObjectOutputStream out;
     private int num;
-    private String strResponse;
     private int intResponse;
     private boolean keepRunning = true;
 
@@ -73,18 +71,18 @@ public class Client implements Runnable {
     public void run() {
         try {
             socket = new Socket("localhost", 45000);
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream());
+            Streams stream = new Streams(socket);
+            out = stream.getOut();
+            in = stream.getIn();
 
             while (keepRunning) {
                 num = probability[(int) (Math.random() * 1000)];
                 System.out.println("User: " + userNum + ": sending " + num);
 
-                out.println("" + num);
+                out.writeObject(num);
                 out.flush();
 
-                strResponse = in.readLine();
-                intResponse = Integer.parseInt(strResponse);
+                intResponse = (int) in.readObject();
                 System.out.println("User: " + userNum + ": got reply: " + intResponse + " for query " + num);
             }
         } catch (Exception e) {

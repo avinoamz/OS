@@ -5,8 +5,6 @@
  */
 package os1;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -22,8 +20,9 @@ public class Server implements Runnable {
     private int S, C, M, L, Y;
     private static ThreadPool S_Pool, Cache_Pool, Readers_Pool;
     private static Cache cache;
+    private static Database database;
     private static TempDataList tempDataList = new TempDataList();
-    private ArrayList<Socket> clients = new ArrayList();
+    private static ArrayList<Streams> clients = new ArrayList();
     private final ReentrantLock lock = new ReentrantLock(true);
     public static final int Type_S_Pool = 1;
     public static final int Type_Cache_Pool = 2;
@@ -50,6 +49,7 @@ public class Server implements Runnable {
             Readers_Pool = new ThreadPool(Y);
 
             cache = new Cache(C, M);
+            database = new Database();
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
@@ -62,9 +62,11 @@ public class Server implements Runnable {
         while (true) {
             try {
                 Socket clientSocket = serverSocket.accept();
+                
                 //
                 // need lock?
-                clients.add(clientSocket);
+                Streams stream = new Streams(clientSocket);
+                clients.add(stream);
             } catch (Exception e) {
                 System.out.println("Error accepting socket");
             }
@@ -84,6 +86,10 @@ public class Server implements Runnable {
         }
     }
 
+    public static int getClientsSize() {
+        return clients.size();
+    }
+
     public static void addToTempDataList(int x) {
         tempDataList.add(x);
     }
@@ -95,15 +101,17 @@ public class Server implements Runnable {
     public static Cache getCache() {
         return cache;
     }
+
+    public static Database getDatabase() {
+        return database;
+    }
 }
 
 class socketsReader implements Runnable {
 
-    private ArrayList<Socket> clients;
-    private ObjectInputStream in;
-    private ObjectOutputStream out;
+    private ArrayList<Streams> clients;
     private Socket socket;
-    private int msg;
+    private Streams stream;
 
     public socketsReader(ArrayList clients) {
         this.clients = clients;
@@ -111,11 +119,18 @@ class socketsReader implements Runnable {
 
     @Override
     public void run() {
+
         while (true) {
+            while (clients.isEmpty()) {
+                try {
+                    Thread.sleep(10);
+                } catch (Exception e) {
+                }
+            }
             for (int i = 0; i < clients.size(); i++) {
-                socket = clients.get(i);
+                stream = clients.get(i);
                 // more params ?
-                Thread readData = new Thread(new socketDataReader(socket));
+                Thread readData = new Thread(new socketDataReader(stream));
                 readData.start();
                 try {
                     // set const waiting time ?

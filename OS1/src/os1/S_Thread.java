@@ -16,36 +16,51 @@ import java.util.concurrent.Semaphore;
 public class S_Thread implements Runnable {
 
     private Socket socket;
+    private Streams stream;
     private int msg, answer;
     private Semaphore semaphore;
+    private ObjectOutputStream out;
 
-    public S_Thread(Socket socket, int msg) {
-        this.socket = socket;
+    public S_Thread(Streams stream, int msg) {
+        this.stream = stream;
         this.msg = msg;
         semaphore = new Semaphore(0);
+        try {
+            out = stream.getOut();
+            out.flush();
+        } catch (Exception e) {
+        }
     }
 
     @Override
     public void run() {
 
-        Server.getPool(Server.Type_Cache_Pool).execute(new CacheSearcher(this));
         try {
+            Server.getPool(Server.Type_Cache_Pool).execute(new CacheSearcher(this));
             semaphore.acquire();
             if (answer != -1) {
-                new ObjectOutputStream(socket.getOutputStream()).writeObject(answer);
+                out.writeObject(answer);
+                out.flush();
             } else {
-                // ask DB (also make sure the DB generate new ans if not found)
+                Server.getPool(Server.Type_Readers_Pool).execute(new DatabaseReader(this));
+                semaphore.acquire();
+                // in case no answer was found or generated
+                if (answer == -1) {
+                    System.out.println("Error generating response");
+                }
+                out.writeObject(answer);
+                out.flush();
             }
         } catch (Exception e) {
-            System.out.println("Error while waiting for CachePool Semaphore");
+            System.out.println("S_Thread error while finding answer");
+            e.printStackTrace();
         }
-
 
         /*
         ask the cache
         ask the db
         generate new ans
-        
+       
         return the answer, and add the query to tempDataBase
          */
     }

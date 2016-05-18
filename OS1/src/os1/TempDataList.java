@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class TempDataList {
 
-    private ArrayList<Integer> data;
+    private ArrayList<Integer> data = new ArrayList();
     private final ReentrantLock lock = new ReentrantLock(true);
 
     public void add(int num) {

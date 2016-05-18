@@ -16,23 +16,22 @@ import java.net.Socket;
 public class socketDataReader implements Runnable {
 
     private ObjectInputStream in;
-    private ObjectOutputStream out;
     private Socket socket;
+    private Streams stream;
     private int msg;
 
-    public socketDataReader(Socket socket) {
-        this.socket = socket;
+    public socketDataReader(Streams stream) {
+        this.stream = stream;
     }
 
     @Override
     public void run() {
         try {
-            in = new ObjectInputStream(socket.getInputStream());
-            out = new ObjectOutputStream(socket.getOutputStream());
+            in = stream.getIn();
             msg = (int) in.readObject();
             // 
             // S_Thread param?
-            Thread query = new Thread(new S_Thread(socket, msg));
+            Thread query = new Thread(new S_Thread(stream, msg));
             Server.getPool(Server.Type_S_Pool).execute(query);
 
         } catch (Exception e) {

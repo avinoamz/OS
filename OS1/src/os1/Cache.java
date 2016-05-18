@@ -23,6 +23,7 @@ public class Cache {
         this.C = C;
         this.M = M;
         memory = new HashMap<>(C);
+        memory.put(5, new Data(2, 1));
     }
 
     public int search(int x) {
