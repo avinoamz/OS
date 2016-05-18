@@ -24,6 +24,7 @@ public class socketDataReader implements Runnable {
         this.socket = socket;
     }
 
+    @Override
     public void run() {
         try {
             in = new ObjectInputStream(socket.getInputStream());
@@ -32,12 +33,10 @@ public class socketDataReader implements Runnable {
             // 
             // S_Thread param?
             Thread query = new Thread(new S_Thread(socket, msg));
-            Server.getPool(1).execute(query);
+            Server.getPool(Server.Type_S_Pool).execute(query);
 
-            //pool.execute
         } catch (Exception e) {
             System.out.println("Error reading from socket");
         }
     }
-
 }

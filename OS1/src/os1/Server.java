@@ -20,9 +20,14 @@ public class Server implements Runnable {
 
     private ServerSocket serverSocket;
     private int S, C, M, L, Y;
-    private static ThreadPool S_Pool;
+    private static ThreadPool S_Pool, Cache_Pool, Readers_Pool;
+    private static Cache cache;
+    private static TempDataList tempDataList = new TempDataList();
     private ArrayList<Socket> clients = new ArrayList();
     private final ReentrantLock lock = new ReentrantLock(true);
+    public static final int Type_S_Pool = 1;
+    public static final int Type_Cache_Pool = 2;
+    public static final int Type_Readers_Pool = 3;
 
     public Server(int S, int C, int M, int L, int Y) {
         this.S = S;
@@ -40,6 +45,11 @@ public class Server implements Runnable {
             new Thread(new socketsReader(clients)).start();
 
             S_Pool = new ThreadPool(S);
+            //cache pool size?
+            Cache_Pool = new ThreadPool(1);
+            Readers_Pool = new ThreadPool(Y);
+
+            cache = new Cache(C, M);
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
@@ -65,9 +75,25 @@ public class Server implements Runnable {
         switch (type) {
             case 1:
                 return S_Pool;
+            case 2:
+                return Cache_Pool;
+            case 3:
+                return Readers_Pool;
             default:
                 return null;
         }
+    }
+
+    public static void addToTempDataList(int x) {
+        tempDataList.add(x);
+    }
+
+    public static TempDataList getTempDataList() {
+        return tempDataList;
+    }
+
+    public static Cache getCache() {
+        return cache;
     }
 }
 
