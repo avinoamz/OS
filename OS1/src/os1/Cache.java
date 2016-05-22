@@ -15,31 +15,54 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Cache {
 
-    private int C, M;
+    private int C, M, Min_Z;
     private static HashMap<Integer, Data> memory;
     private final ReentrantLock lock = new ReentrantLock(true);
 
     public Cache(int C, int M) {
         this.C = C;
         this.M = M;
+        Min_Z = M;
         memory = new HashMap<>(C);
-        memory.put(5, new Data(2, 1));
+        memory.put(5, new Data(5, 2, 1));
     }
 
+    // need lock?
     public int search(int x) {
         lock.lock();
-        // null pointer?
         try {
             Data data = memory.get(x);
             if (data != null) {
-                Server.addToTempDataList(x);
+                data.updateZ();
                 return data.getY();
             }
             return -1;
         } finally {
+            checkForUpdates();
             lock.unlock();
         }
     }
+
+    // Update cache
+    private void checkForUpdates() {
+        if (Server.getDatabase().isCacheUpdateNeeded()) {
+            HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates();
+
+            // merge updates and memory, sort, and take top queries
+            // set last query's Z as minZ
+            // update DB ?
+            Server.getDatabase().setCacheUpdateNeeded(false);
+        }
+    }
+
+    public int getMin_Z() {
+        return Min_Z;
+    }
+
+    public void setMin_Z(int Min_Z) {
+        this.Min_Z = Min_Z;
+    }
+
 }
 
 class CacheSearcher implements Runnable {

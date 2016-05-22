@@ -5,7 +5,9 @@
  */
 package os1;
 
+import java.util.HashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
@@ -13,21 +15,82 @@ import java.util.concurrent.Semaphore;
  */
 public class Database {
 
+    private TempDataList databaseUpdates;
+    private HashMap<Integer, Data> cacheUpdates;
+    boolean tempFoundAns = false; // need to delete this
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private int updatesSize = 10; // what size?
+    private boolean cacheUpdateNeeded = false;
+
+    public Database() {
+        databaseUpdates = new TempDataList();
+        cacheUpdates = new HashMap<>(updatesSize); // what size?
+    }
+
     public int search(int x) {
         /*
         search in DB
         if found, add to TempDataList and return ans to socket
          */
+
+        //if found ans
+        if (tempFoundAns) {
+            // data - the ans found
+            Data data = new Data();
+            if (data.getZ() >= Server.getCache().getMin_Z()) {
+                addUpdateCandidate(data);
+            }
+            databaseUpdates.add(data.getX());
+        }
         return -1;
     }
 
     public int generate(int x) {
         // generate new response for x, and write it to DB (Thread W)
         // might be good idea to update DB while doing this
+        // also update Cache?
+        // cache update candidate?
 
         //choose random number ?
         return 1;
     }
+
+    public void addUpdateCandidate(Data data) {
+        lock.lock();
+        try {
+            Data value = cacheUpdates.get(data.getX());
+            if (value != null) {
+                data.setZ(value.getZ() + 1);
+            } else {
+                data.updateZ();
+            }
+            cacheUpdates.put(data.getX(), data);
+            if (cacheUpdates.size() >= updatesSize) {
+                setCacheUpdateNeeded(true);
+                // need to update Cache
+                // also update DB ?
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public boolean isCacheUpdateNeeded() {
+        return cacheUpdateNeeded;
+    }
+
+    public void setCacheUpdateNeeded(boolean cacheUpdateNeeded) {
+        this.cacheUpdateNeeded = cacheUpdateNeeded;
+    }
+
+    public HashMap<Integer, Data> getCacheUpdates() {
+        return cacheUpdates;
+    }
+
+    public void setCacheUpdates(HashMap<Integer, Data> cacheUpdates) {
+        cacheUpdates = cacheUpdates;
+    }
+
 }
 
 class DatabaseReader implements Runnable {

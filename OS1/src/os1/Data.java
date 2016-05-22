@@ -7,16 +7,26 @@ package os1;
 
 public class Data {
 
-    private int y, z;
+    private int x, y, z;
 
     public Data() {
+        x = 0;
         y = 0;
         z = 0;
     }
 
-    public Data(int y, int z) {
+    public Data(int x, int y, int z) {
+        this.x = x;
         this.y = y;
         this.z = z;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public void setX(int x) {
+        this.x = x;
     }
 
     public int getY() {
@@ -33,6 +43,10 @@ public class Data {
 
     public void setZ(int z) {
         this.z = z;
+    }
+
+    public void updateZ() {
+        this.z++;
     }
 
 }
