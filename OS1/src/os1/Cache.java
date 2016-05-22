@@ -5,7 +5,11 @@
  */
 package os1;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -15,12 +19,13 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Cache {
 
-    private int C, M, Min_Z;
+    private int C, M, Min_Z, cacheSize;
     private static HashMap<Integer, Data> memory;
     private final ReentrantLock lock = new ReentrantLock(true);
 
     public Cache(int C, int M) {
         this.C = C;
+        cacheSize = C;
         this.M = M;
         Min_Z = M;
         memory = new HashMap<>(C);
@@ -44,13 +49,32 @@ public class Cache {
     }
 
     // Update cache
+    // update DB ?
     private void checkForUpdates() {
         if (Server.getDatabase().isCacheUpdateNeeded()) {
             HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates();
+            memory.putAll(updates);
 
-            // merge updates and memory, sort, and take top queries
-            // set last query's Z as minZ
-            // update DB ?
+            List<Data> values = new ArrayList(memory.values());
+            Collections.sort(values, new Comparator<Data>() {
+                @Override
+                public int compare(Data o1, Data o2) {
+                    return ((Integer) o2.getZ()).compareTo((Integer) o1.getZ());
+                }
+            });
+
+            //
+            // check indexs
+            if (values.size() > cacheSize) {
+                for (int i = cacheSize; i < values.size(); i++) {
+                    memory.remove(values.get(i).getX());
+                }
+                setMin_Z(values.get(cacheSize - 1).getZ());
+            } else {
+                setMin_Z(values.get(values.size()).getZ());
+            }
+
+            Server.getDatabase().clearCacheUpdates();
             Server.getDatabase().setCacheUpdateNeeded(false);
         }
     }

@@ -67,7 +67,6 @@ public class Database {
             cacheUpdates.put(data.getX(), data);
             if (cacheUpdates.size() >= updatesSize) {
                 setCacheUpdateNeeded(true);
-                // need to update Cache
                 // also update DB ?
             }
         } finally {
@@ -88,7 +87,11 @@ public class Database {
     }
 
     public void setCacheUpdates(HashMap<Integer, Data> cacheUpdates) {
-        cacheUpdates = cacheUpdates;
+        this.cacheUpdates = cacheUpdates;
+    }
+
+    public void clearCacheUpdates() {
+        cacheUpdates.clear();
     }
 
 }

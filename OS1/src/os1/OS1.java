@@ -18,11 +18,11 @@ public class OS1 {
         new Thread(new Server(5, 10, 5, 100, 5)).start();
         new Thread(new Client(1, 10, "DB1")).start();
         new Thread(new Client(1, 10, "DB1")).start();
-        try {
-            Thread.sleep(2000);
-        } catch (Exception e) {
-        }
-        System.exit(0);
+//        try {
+//            Thread.sleep(2000);
+//        } catch (Exception e) {
+//        }
+//        System.exit(0);
     }
 
 }
