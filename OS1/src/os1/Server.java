@@ -110,7 +110,6 @@ public class Server implements Runnable {
 class socketsReader implements Runnable {
 
     private ArrayList<Streams> clients;
-    private Socket socket;
     private Streams stream;
 
     public socketsReader(ArrayList clients) {

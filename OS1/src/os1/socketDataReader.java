@@ -16,7 +16,6 @@ import java.net.Socket;
 public class socketDataReader implements Runnable {
 
     private ObjectInputStream in;
-    private Socket socket;
     private Streams stream;
     private int msg;
 

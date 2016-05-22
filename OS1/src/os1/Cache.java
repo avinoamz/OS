@@ -18,11 +18,11 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Avinoam
  */
 public class Cache {
-
+    
     private int C, M, Min_Z, cacheSize;
     private static HashMap<Integer, Data> memory;
     private final ReentrantLock lock = new ReentrantLock(true);
-
+    
     public Cache(int C, int M) {
         this.C = C;
         cacheSize = C;
@@ -39,6 +39,7 @@ public class Cache {
             Data data = memory.get(x);
             if (data != null) {
                 data.updateZ();
+                Server.getDatabase().getDatabaseUpdates().add(data.getX());
                 return data.getY();
             }
             return -1;
@@ -48,13 +49,14 @@ public class Cache {
         }
     }
 
+    // lock?
     // Update cache
     // update DB ?
     private void checkForUpdates() {
         if (Server.getDatabase().isCacheUpdateNeeded()) {
             HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates();
             memory.putAll(updates);
-
+            
             List<Data> values = new ArrayList(memory.values());
             Collections.sort(values, new Comparator<Data>() {
                 @Override
@@ -73,34 +75,44 @@ public class Cache {
             } else {
                 setMin_Z(values.get(values.size()).getZ());
             }
-
+            
             Server.getDatabase().clearCacheUpdates();
             Server.getDatabase().setCacheUpdateNeeded(false);
         }
     }
-
+    
     public int getMin_Z() {
-        return Min_Z;
+        lock.lock();
+        try {
+            return Min_Z;
+        } finally {
+            lock.unlock();
+        }
     }
-
+    
     public void setMin_Z(int Min_Z) {
-        this.Min_Z = Min_Z;
+        lock.lock();
+        try {
+            this.Min_Z = Min_Z;
+        } finally {
+            lock.unlock();
+        }
     }
-
+    
 }
 
 class CacheSearcher implements Runnable {
-
+    
     private S_Thread thread;
     private int query;
     private Semaphore semaphore;
-
+    
     public CacheSearcher(S_Thread thread) {
         this.thread = thread;
         semaphore = thread.getSemaphore();
         query = thread.getQuery();
     }
-
+    
     @Override
     public void run() {
         thread.setAnswer(Server.getCache().search(query));

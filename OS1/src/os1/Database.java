@@ -94,6 +94,13 @@ public class Database {
         cacheUpdates.clear();
     }
 
+    public TempDataList getDatabaseUpdates() {
+        return databaseUpdates;
+    }
+
+    public void setDatabaseUpdates(TempDataList databaseUpdates) {
+        this.databaseUpdates = databaseUpdates;
+    }
 }
 
 class DatabaseReader implements Runnable {

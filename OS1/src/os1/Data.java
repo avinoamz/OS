@@ -5,9 +5,12 @@
  */
 package os1;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public class Data {
 
     private int x, y, z;
+    private final ReentrantLock lock = new ReentrantLock(true);
 
     public Data() {
         x = 0;
@@ -22,31 +25,65 @@ public class Data {
     }
 
     public int getX() {
-        return x;
+        lock.lock();
+        try {
+            return x;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setX(int x) {
-        this.x = x;
+        lock.lock();
+        try {
+            this.x = x;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public int getY() {
-        return y;
+        lock.lock();
+        try {
+            return y;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setY(int y) {
-        this.y = y;
+        lock.lock();
+        try {
+            this.y = y;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public int getZ() {
-        return z;
+        lock.lock();
+        try {
+            return z;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setZ(int z) {
-        this.z = z;
+        lock.lock();
+        try {
+            this.z = z;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void updateZ() {
-        this.z++;
+        lock.lock();
+        try {
+            this.z++;
+        } finally {
+            lock.unlock();
+        }
     }
-
 }
