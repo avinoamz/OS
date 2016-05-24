@@ -18,7 +18,8 @@ public class Server implements Runnable {
 
     private ServerSocket serverSocket;
     private int S, C, M, L, Y;
-    private static ThreadPool S_Pool, Cache_Pool, Readers_Pool;
+    private static int randomRange;
+    private static ThreadPool S_Pool, Cache_Pool, Readers_Pool, Writer_Pool;
     private static Cache cache;
     private static Database database;
     private static TempDataList tempDataList = new TempDataList();
@@ -27,12 +28,14 @@ public class Server implements Runnable {
     public static final int Type_S_Pool = 1;
     public static final int Type_Cache_Pool = 2;
     public static final int Type_Readers_Pool = 3;
+    public static final int Type_Writer_Pool = 4;
 
     public Server(int S, int C, int M, int L, int Y) {
         this.S = S;
         this.C = C;
         this.M = M;
         this.L = L;
+        randomRange = L;
         this.Y = Y;
         initServer();
     }
@@ -47,9 +50,10 @@ public class Server implements Runnable {
             //cache pool size?
             Cache_Pool = new ThreadPool(1);
             Readers_Pool = new ThreadPool(Y);
+            Writer_Pool = new ThreadPool(1);
 
             cache = new Cache(C, M);
-            database = new Database();
+            database = new Database(randomRange);
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
@@ -62,7 +66,6 @@ public class Server implements Runnable {
         while (true) {
             try {
                 Socket clientSocket = serverSocket.accept();
-                
                 //
                 // need lock?
                 Streams stream = new Streams(clientSocket);
@@ -81,17 +84,23 @@ public class Server implements Runnable {
                 return Cache_Pool;
             case 3:
                 return Readers_Pool;
+            case 4:
+                return Writer_Pool;
             default:
                 return null;
         }
+    }
+
+    public static int getrandomRange() {
+        return randomRange;
     }
 
     public static int getClientsSize() {
         return clients.size();
     }
 
-    public static void addToTempDataList(int x) {
-        tempDataList.add(x);
+    public static void addToTempDataList(Data data) {
+        tempDataList.put(data);
     }
 
     public static TempDataList getTempDataList() {
@@ -133,10 +142,14 @@ class socketsReader implements Runnable {
                 readData.start();
                 try {
                     // set const waiting time ?
-                    readData.join(100);
-                    if (readData.isAlive()) {
-                        readData.interrupt();
+                    int time = 0;
+                    while (readData.isAlive() && time < 10) {
+                        Thread.sleep(10);
+                        time++;
                     }
+                    // interrupt works as intended?
+                    readData.interrupt();
+
                 } catch (Exception e) {
                     System.out.println("Join error");
                 }

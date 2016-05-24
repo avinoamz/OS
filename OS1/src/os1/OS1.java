@@ -16,8 +16,8 @@ public class OS1 {
      */
     public static void main(String[] args) {
         new Thread(new Server(5, 10, 5, 100, 5)).start();
-        new Thread(new Client(1, 10, "DB1")).start();
-        new Thread(new Client(1, 10, "DB1")).start();
+        new Thread(new Client(-5, 4, "DB1")).start();
+        new Thread(new Client(-5, 4, "DB1")).start();
 //        try {
 //            Thread.sleep(2000);
 //        } catch (Exception e) {

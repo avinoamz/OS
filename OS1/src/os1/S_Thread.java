@@ -15,7 +15,6 @@ import java.util.concurrent.Semaphore;
  */
 public class S_Thread implements Runnable {
 
-    private Socket socket;
     private Streams stream;
     private int msg, answer;
     private Semaphore semaphore;

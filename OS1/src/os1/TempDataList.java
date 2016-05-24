@@ -6,6 +6,8 @@
 package os1;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -14,31 +16,46 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class TempDataList {
 
-    private ArrayList<Integer> data = new ArrayList();
+    private final HashMap<Integer, Data> map = new HashMap();
     private final ReentrantLock lock = new ReentrantLock(true);
 
-    public void add(int num) {
+    public void put(Data num) {
         lock.lock();
         try {
-            data.add(num);
+            Data value = map.get(num.getX());
+            if (value == null) {
+                num.updateZ();
+            } else {
+                num.setZ(value.getZ() + 1);
+            }
+            map.put(num.getX(), num);
         } finally {
             lock.unlock();
         }
     }
 
-    public int get(int index) {
+    public Data get(int key) {
         lock.lock();
         try {
-            return data.get(index);
+            return map.get(key);
         } finally {
             lock.unlock();
         }
     }
 
-    public int remove(int index) {
+    public HashMap getAll() {
         lock.lock();
         try {
-            return data.remove(index);
+            return map;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public Data remove(int key) {
+        lock.lock();
+        try {
+            return map.remove(key);
         } finally {
             lock.unlock();
         }
@@ -47,7 +64,26 @@ public class TempDataList {
     public int size() {
         lock.lock();
         try {
-            return data.size();
+            return map.size();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void clear() {
+        lock.lock();
+        try {
+            map.clear();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public List<Data> getValues() {
+        lock.lock();
+        try {
+            List<Data> values = new ArrayList(map.values());
+            return values;
         } finally {
             lock.unlock();
         }

@@ -5,9 +5,17 @@
  */
 package os1;
 
-import java.util.HashMap;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.List;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -15,78 +23,137 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Database {
 
-    private TempDataList databaseUpdates;
-    private HashMap<Integer, Data> cacheUpdates;
-    boolean tempFoundAns = false; // need to delete this
+    private TempDataList databaseUpdates, cacheUpdates;
     private final ReentrantLock lock = new ReentrantLock(true);
-    private int updatesSize = 10; // what size?
-    private boolean cacheUpdateNeeded = false;
+    private int updatesSize = 5; // what size?
+    private boolean updateNeeded = false;
+    private boolean databaseUpdateNeeded = false;
+    private final int fileSize = 1000; // size?
+    private final int readSize = Integer.BYTES * 3;
+    private final int randomRange;
 
-    public Database() {
+    //temp locks
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private final Lock readLock = readWriteLock.readLock();
+    private final Lock writeLock = readWriteLock.writeLock();
+
+    public Database(int range) {
         databaseUpdates = new TempDataList();
-        cacheUpdates = new HashMap<>(updatesSize); // what size?
+        cacheUpdates = new TempDataList();
+        this.randomRange = range;
     }
 
     public int search(int x) {
-        /*
-        search in DB
-        if found, add to TempDataList and return ans to socket
-         */
-
-        //if found ans
-        if (tempFoundAns) {
-            // data - the ans found
-            Data data = new Data();
-            if (data.getZ() >= Server.getCache().getMin_Z()) {
-                addUpdateCandidate(data);
-            }
-            databaseUpdates.add(data.getX());
-        }
-        return -1;
-    }
-
-    public int generate(int x) {
-        // generate new response for x, and write it to DB (Thread W)
-        // might be good idea to update DB while doing this
-        // also update Cache?
-        // cache update candidate?
-
-        //choose random number ?
-        return 1;
-    }
-
-    public void addUpdateCandidate(Data data) {
+        // readLock.lock();
         lock.lock();
         try {
-            Data value = cacheUpdates.get(data.getX());
-            if (value != null) {
-                data.setZ(value.getZ() + 1);
+            RandomAccessFile file = new RandomAccessFile(getFile(x), "r");
+            file.seek(getPosition(x));
+            Data data = new Data(file.readInt(), file.readInt(), file.readInt());
+            if (data.getX() != 0 || ((x == 0) && data.getX() == 0)) {
+                System.out.println("success read from db " + data.getX() + " " + data.getY() + " " + data.getZ());
+                databaseUpdates.put(data);
+                if (data.getZ() >= Server.getCache().getMin_Z()) {
+                    cacheUpdates.put(data);
+                }
+                // depends on size, or times accessed?
+                if (databaseUpdates.size() > updatesSize) {
+                    callWriter();
+                }
+                file.close();
+                return data.getY();
             } else {
-                data.updateZ();
+                return generate(x);
             }
-            cacheUpdates.put(data.getX(), data);
-            if (cacheUpdates.size() >= updatesSize) {
-                setCacheUpdateNeeded(true);
-                // also update DB ?
-            }
+        } catch (IOException ex) {
+            return generate(x);
         } finally {
             lock.unlock();
         }
     }
 
-    public boolean isCacheUpdateNeeded() {
-        return cacheUpdateNeeded;
+    private int generate(int x) {
+        lock.lock();
+        try {
+            Data data;
+            if ((data = databaseUpdates.get(x)) != null) {
+                data.updateZ();
+                return data.getY();
+            }
+            int y = (int) (Math.random() * randomRange) + 1;
+            data = new Data(x, y, 1);
+            databaseUpdates.put(data);
+            if (databaseUpdates.size() > updatesSize) {
+                callWriter();
+            }
+            return y;
+        } finally {
+            lock.unlock();
+        }
     }
 
-    public void setCacheUpdateNeeded(boolean cacheUpdateNeeded) {
-        this.cacheUpdateNeeded = cacheUpdateNeeded;
+    private void callWriter() {
+        Semaphore semaphore = new Semaphore(0, true);
+        setUpdateNeeded(true); //setUpdate before or after DB Writer?
+        Server.getPool(Server.Type_Writer_Pool).execute(new DatabaseWriter(semaphore));
+//        try {
+//            semaphore.acquire();
+//        } catch (InterruptedException ex) {
+//            Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+//        }
     }
 
-    public HashMap<Integer, Data> getCacheUpdates() {
+    public void update() throws FileNotFoundException, IOException {
+
+        lock.lock();
+        // writeLock.lock();
+        try {
+            List<Data> list = databaseUpdates.getValues();
+            for (int i = 0; i < list.size(); i++) {
+                Data data = databaseUpdates.get(list.get(i).getX());
+
+                RandomAccessFile file = new RandomAccessFile(getFile(data.getX()), "rw");
+
+                file.seek(getPosition(data.getX()));
+                file.writeInt(data.getX());
+                file.writeInt(data.getY());
+                file.writeInt(data.getZ());
+                file.close();
+            }
+            databaseUpdates.clear();
+        } finally {
+            lock.unlock();
+            // writeLock.unlock();
+        }
+    }
+
+    // lock functions?
+    
+    private String getFile(int x) {
+        return "file_" + (x / fileSize) * fileSize;
+    }
+
+    private int getPosition(int x) {
+        return Math.abs(x % (fileSize)) * readSize;
+    }
+
+    public Lock getWriteLock() {
+        return writeLock;
+    }
+
+    public boolean isUpdateNeeded() {
+        return updateNeeded;
+    }
+
+    public void setUpdateNeeded(boolean updateNeeded) {
+        this.updateNeeded = updateNeeded;
+    }
+
+    public TempDataList getCacheUpdates() {
         return cacheUpdates;
     }
 
-    public void setCacheUpdates(HashMap<Integer, Data> cacheUpdates) {
+    public void setCacheUpdates(TempDataList cacheUpdates) {
         this.cacheUpdates = cacheUpdates;
     }
 
@@ -117,13 +184,34 @@ class DatabaseReader implements Runnable {
 
     @Override
     public void run() {
-        answer = Server.getDatabase().search(query);
-        if (answer != -1) {
-            thread.setAnswer(answer);
-            semaphore.release();
-        } else {
-            thread.setAnswer(Server.getDatabase().generate(query));
-            semaphore.release();
-        }
+        thread.setAnswer(Server.getDatabase().search(query));
+        semaphore.release();
     }
+}
+
+class DatabaseWriter implements Runnable {
+
+    private Semaphore semaphore;
+    private TempDataList updates;
+    private Lock writeLock;
+
+    public DatabaseWriter(Semaphore semaphore) {
+        this.semaphore = semaphore;
+        updates = Server.getDatabase().getDatabaseUpdates();
+        writeLock = Server.getDatabase().getWriteLock();
+    }
+
+    @Override
+    public void run() {
+
+        try {
+            Server.getDatabase().update();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(DatabaseWriter.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(DatabaseWriter.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        semaphore.release();
+    }
+
 }

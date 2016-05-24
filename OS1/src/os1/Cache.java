@@ -18,18 +18,17 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Avinoam
  */
 public class Cache {
-    
+
     private int C, M, Min_Z, cacheSize;
     private static HashMap<Integer, Data> memory;
     private final ReentrantLock lock = new ReentrantLock(true);
-    
+
     public Cache(int C, int M) {
         this.C = C;
-        cacheSize = C;
+        cacheSize = 5; // size?
         this.M = M;
         Min_Z = M;
-        memory = new HashMap<>(C);
-        memory.put(5, new Data(5, 2, 1));
+        memory = new HashMap<>();
     }
 
     // need lock?
@@ -39,7 +38,8 @@ public class Cache {
             Data data = memory.get(x);
             if (data != null) {
                 data.updateZ();
-                Server.getDatabase().getDatabaseUpdates().add(data.getX());
+                Server.getDatabase().getDatabaseUpdates().put(data);
+                System.out.println("Cache response:");
                 return data.getY();
             }
             return -1;
@@ -53,10 +53,10 @@ public class Cache {
     // Update cache
     // update DB ?
     private void checkForUpdates() {
-        if (Server.getDatabase().isCacheUpdateNeeded()) {
-            HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates();
+        if (Server.getDatabase().isUpdateNeeded()) {
+            HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates().getAll();
             memory.putAll(updates);
-            
+
             List<Data> values = new ArrayList(memory.values());
             Collections.sort(values, new Comparator<Data>() {
                 @Override
@@ -72,15 +72,14 @@ public class Cache {
                     memory.remove(values.get(i).getX());
                 }
                 setMin_Z(values.get(cacheSize - 1).getZ());
-            } else {
-                setMin_Z(values.get(values.size()).getZ());
+            } else if (!values.isEmpty()) {
+                setMin_Z(values.get(values.size() - 1).getZ());
             }
-            
             Server.getDatabase().clearCacheUpdates();
-            Server.getDatabase().setCacheUpdateNeeded(false);
+            Server.getDatabase().setUpdateNeeded(false);
         }
     }
-    
+
     public int getMin_Z() {
         lock.lock();
         try {
@@ -89,7 +88,7 @@ public class Cache {
             lock.unlock();
         }
     }
-    
+
     public void setMin_Z(int Min_Z) {
         lock.lock();
         try {
@@ -98,21 +97,21 @@ public class Cache {
             lock.unlock();
         }
     }
-    
+
 }
 
 class CacheSearcher implements Runnable {
-    
+
     private S_Thread thread;
     private int query;
     private Semaphore semaphore;
-    
+
     public CacheSearcher(S_Thread thread) {
         this.thread = thread;
         semaphore = thread.getSemaphore();
         query = thread.getQuery();
     }
-    
+
     @Override
     public void run() {
         thread.setAnswer(Server.getCache().search(query));
