@@ -25,7 +25,7 @@ public class Cache {
 
     public Cache(int C, int M) {
         this.C = C;
-        cacheSize = 5; // size?
+        cacheSize = C;
         this.M = M;
         Min_Z = M;
         memory = new HashMap<>();
@@ -39,7 +39,7 @@ public class Cache {
             if (data != null) {
                 data.updateZ();
                 Server.getDatabase().getDatabaseUpdates().put(data);
-                System.out.println("Cache response:");
+                System.out.println("Cache response: " + data.toString());
                 return data.getY();
             }
             return -1;

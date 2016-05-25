@@ -5,6 +5,8 @@
  */
 package os1;
 
+import java.io.File;
+
 /**
  *
  * @author Avinoam
@@ -15,9 +17,24 @@ public class OS1 {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
+
+        File folder = new File("C:\\Users\\Avinoam\\Documents\\OS1\\OS1\\OS1\\database");
+        final File[] files = folder.listFiles();
+        for (File f : files) {
+            f.delete();
+        }
+
+        // Server args: S_Threads, Cache size, MinZ, randomRange, databaseReaders
         new Thread(new Server(5, 10, 5, 100, 5)).start();
-        new Thread(new Client(-5, 4, "DB1")).start();
-        new Thread(new Client(-5, 4, "DB1")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "2.txt")).start();
+        new Thread(new Client(-5, 4, "3.txt")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "2.txt")).start();
+        new Thread(new Client(-5, 4, "3.txt")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "2.txt")).start();
+        new Thread(new Client(-5, 4, "3.txt")).start();
 //        try {
 //            Thread.sleep(2000);
 //        } catch (Exception e) {

@@ -31,27 +31,40 @@ public class Database {
     private final int fileSize = 1000; // size?
     private final int readSize = Integer.BYTES * 3;
     private final int randomRange;
+    private int writers = 1;
+    private int readers;
+    Semaphore Rmutex = new Semaphore(1, true);
+    Semaphore Wmutex = new Semaphore(1, true);
+    Semaphore Mutex2 = new Semaphore(1, true);
+    Semaphore Rdb = new Semaphore(1, true);
+    Semaphore Wdb = new Semaphore(1, true);
 
-    //temp locks
-    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-    private final Lock readLock = readWriteLock.readLock();
-    private final Lock writeLock = readWriteLock.writeLock();
-
-    public Database(int range) {
+    public Database(int range, int Y) {
+        readers = Y;
         databaseUpdates = new TempDataList();
         cacheUpdates = new TempDataList();
         this.randomRange = range;
     }
 
     public int search(int x) {
-        // readLock.lock();
-        lock.lock();
+        //    lock.lock();
         try {
+            Mutex2.acquire();
+            Rdb.acquire();
+            Rmutex.acquire();
+            readers += 1;
+            if (readers == 1) {
+                Wdb.acquire();
+            }
+            Rmutex.release();
+            Rdb.release();
+            Mutex2.release();
+
             RandomAccessFile file = new RandomAccessFile(getFile(x), "r");
             file.seek(getPosition(x));
             Data data = new Data(file.readInt(), file.readInt(), file.readInt());
             if (data.getX() != 0 || ((x == 0) && data.getX() == 0)) {
-                System.out.println("success read from db " + data.getX() + " " + data.getY() + " " + data.getZ());
+                System.out.println("success read from db " + data.toString());
                 databaseUpdates.put(data);
                 if (data.getZ() >= Server.getCache().getMin_Z()) {
                     cacheUpdates.put(data);
@@ -65,10 +78,20 @@ public class Database {
             } else {
                 return generate(x);
             }
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             return generate(x);
         } finally {
-            lock.unlock();
+            try {
+                // lock.unlock();
+                Rmutex.acquire();
+                readers -= 1;
+                if (readers == 0) {
+                    Wdb.release();
+                }
+                Rmutex.release();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }
 
@@ -93,27 +116,24 @@ public class Database {
     }
 
     private void callWriter() {
-        Semaphore semaphore = new Semaphore(0, true);
         setUpdateNeeded(true); //setUpdate before or after DB Writer?
-        Server.getPool(Server.Type_Writer_Pool).execute(new DatabaseWriter(semaphore));
-//        try {
-//            semaphore.acquire();
-//        } catch (InterruptedException ex) {
-//            Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
-//        }
+        Server.getPool(Server.Type_Writer_Pool).execute(new DatabaseWriter());
     }
 
     public void update() throws FileNotFoundException, IOException {
-
-        lock.lock();
-        // writeLock.lock();
         try {
+            Wmutex.acquire();
+            writers += 1;
+            if (writers == 1) {
+                Rdb.acquire();
+            }
+            Wmutex.release();
+            Wdb.acquire();
+
             List<Data> list = databaseUpdates.getValues();
             for (int i = 0; i < list.size(); i++) {
                 Data data = databaseUpdates.get(list.get(i).getX());
-
                 RandomAccessFile file = new RandomAccessFile(getFile(data.getX()), "rw");
-
                 file.seek(getPosition(data.getX()));
                 file.writeInt(data.getX());
                 file.writeInt(data.getY());
@@ -121,24 +141,32 @@ public class Database {
                 file.close();
             }
             databaseUpdates.clear();
+        } catch (Exception e) {
         } finally {
-            lock.unlock();
-            // writeLock.unlock();
+            try {
+                Wdb.release();
+                Wmutex.acquire();
+                writers -= 1;
+                if (writers == 0) {
+                    Rdb.release();
+                }
+                Wmutex.release();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }
 
     // lock functions?
-    
     private String getFile(int x) {
-        return "file_" + (x / fileSize) * fileSize;
+        if (x < 0) {
+            return "C:\\Users\\Avinoam\\Documents\\OS1\\OS1\\OS1\\database/file_" + ((x / fileSize) - 1) * fileSize;
+        }
+        return "C:\\Users\\Avinoam\\Documents\\OS1\\OS1\\OS1\\database/file_" + (x / fileSize) * fileSize;
     }
 
     private int getPosition(int x) {
         return Math.abs(x % (fileSize)) * readSize;
-    }
-
-    public Lock getWriteLock() {
-        return writeLock;
     }
 
     public boolean isUpdateNeeded() {
@@ -191,27 +219,14 @@ class DatabaseReader implements Runnable {
 
 class DatabaseWriter implements Runnable {
 
-    private Semaphore semaphore;
-    private TempDataList updates;
-    private Lock writeLock;
-
-    public DatabaseWriter(Semaphore semaphore) {
-        this.semaphore = semaphore;
-        updates = Server.getDatabase().getDatabaseUpdates();
-        writeLock = Server.getDatabase().getWriteLock();
-    }
-
     @Override
     public void run() {
 
         try {
             Server.getDatabase().update();
-        } catch (FileNotFoundException ex) {
-            Logger.getLogger(DatabaseWriter.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(DatabaseWriter.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (Exception e) {
+            System.out.println("Error updating database");
         }
-        semaphore.release();
     }
 
 }

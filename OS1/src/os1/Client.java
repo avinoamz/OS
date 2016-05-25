@@ -19,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class Client implements Runnable {
 
     private static int userNumberPool = 0;
-    private final ReentrantLock lock = new ReentrantLock(true);
+    private static final ReentrantLock lock = new ReentrantLock(true);
     private int[] probability = new int[1000];
     private int R1, R2;
     String filename;
@@ -41,10 +41,10 @@ public class Client implements Runnable {
         userNum = getNumber();
 
         try {
-            content = new String(Files.readAllBytes(Paths.get("file.txt")));
+            content = new String(Files.readAllBytes(Paths.get(filename)));
             contentArr = content.split(",");
             int location = 0;
-            int currNumber = R1;
+            int currNumber = Integer.parseInt(contentArr[0]);
             for (int i = 2; i < contentArr.length; i++) {
                 int amount = (int) (Double.parseDouble(contentArr[i]) * 1000);
                 for (int j = 0; j < amount; j++) {

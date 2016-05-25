@@ -22,8 +22,8 @@ public class Server implements Runnable {
     private static ThreadPool S_Pool, Cache_Pool, Readers_Pool, Writer_Pool;
     private static Cache cache;
     private static Database database;
-    private static TempDataList tempDataList = new TempDataList();
-    private static ArrayList<Streams> clients = new ArrayList();
+    private static final TempDataList tempDataList = new TempDataList();
+    private static final ArrayList<Streams> clients = new ArrayList();
     private final ReentrantLock lock = new ReentrantLock(true);
     public static final int Type_S_Pool = 1;
     public static final int Type_Cache_Pool = 2;
@@ -53,7 +53,7 @@ public class Server implements Runnable {
             Writer_Pool = new ThreadPool(1);
 
             cache = new Cache(C, M);
-            database = new Database(randomRange);
+            database = new Database(randomRange, Y);
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
@@ -99,13 +99,13 @@ public class Server implements Runnable {
         return clients.size();
     }
 
-    public static void addToTempDataList(Data data) {
-        tempDataList.put(data);
-    }
-
-    public static TempDataList getTempDataList() {
-        return tempDataList;
-    }
+//    public static void addToTempDataList(Data data) {
+//        tempDataList.put(data);
+//    }
+//
+//    public static TempDataList getTempDataList() {
+//        return tempDataList;
+//    }
 
     public static Cache getCache() {
         return cache;
@@ -149,7 +149,6 @@ class socketsReader implements Runnable {
                     }
                     // interrupt works as intended?
                     readData.interrupt();
-
                 } catch (Exception e) {
                     System.out.println("Join error");
                 }

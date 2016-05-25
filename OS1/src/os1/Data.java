@@ -86,4 +86,10 @@ public class Data {
             lock.unlock();
         }
     }
+
+    @Override
+    public String toString() {
+        return "(" + x + "," + y + "," + z + ")";
+    }
+
 }
