@@ -49,9 +49,6 @@ public class Cache {
         }
     }
 
-    // lock?
-    // Update cache
-    // update DB ?
     private void checkForUpdates() {
         if (Server.getDatabase().isUpdateNeeded()) {
             HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates().getAll();
@@ -102,9 +99,9 @@ public class Cache {
 
 class CacheSearcher implements Runnable {
 
-    private S_Thread thread;
-    private int query;
-    private Semaphore semaphore;
+    private final S_Thread thread;
+    private final int query;
+    private final Semaphore semaphore;
 
     public CacheSearcher(S_Thread thread) {
         this.thread = thread;

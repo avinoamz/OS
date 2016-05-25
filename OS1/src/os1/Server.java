@@ -53,7 +53,7 @@ public class Server implements Runnable {
             Writer_Pool = new ThreadPool(1);
 
             cache = new Cache(C, M);
-            database = new Database(randomRange, Y);
+            database = new Database(randomRange);
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
@@ -99,14 +99,6 @@ public class Server implements Runnable {
         return clients.size();
     }
 
-//    public static void addToTempDataList(Data data) {
-//        tempDataList.put(data);
-//    }
-//
-//    public static TempDataList getTempDataList() {
-//        return tempDataList;
-//    }
-
     public static Cache getCache() {
         return cache;
     }
@@ -137,7 +129,6 @@ class socketsReader implements Runnable {
             }
             for (int i = 0; i < clients.size(); i++) {
                 stream = clients.get(i);
-                // more params ?
                 Thread readData = new Thread(new socketDataReader(stream));
                 readData.start();
                 try {

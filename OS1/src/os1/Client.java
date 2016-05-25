@@ -45,6 +45,10 @@ public class Client implements Runnable {
             contentArr = content.split(",");
             int location = 0;
             int currNumber = Integer.parseInt(contentArr[0]);
+//            if (currNumber != R1) {
+//                keepRunning = false;
+//                throw new Exception("R1 is not equal to the file first number");
+//            }
             for (int i = 2; i < contentArr.length; i++) {
                 int amount = (int) (Double.parseDouble(contentArr[i]) * 1000);
                 for (int j = 0; j < amount; j++) {

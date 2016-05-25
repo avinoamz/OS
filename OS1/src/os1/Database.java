@@ -10,10 +10,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.List;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,22 +22,20 @@ public class Database {
 
     private TempDataList databaseUpdates, cacheUpdates;
     private final ReentrantLock lock = new ReentrantLock(true);
-    private int updatesSize = 5; // what size?
+    private final int updatesSize = 50; // what size?
     private boolean updateNeeded = false;
-    private boolean databaseUpdateNeeded = false;
     private final int fileSize = 1000; // size?
     private final int readSize = Integer.BYTES * 3;
     private final int randomRange;
-    private int writers = 1;
-    private int readers;
+    private int writers = 0;
+    private int readers = 0;
     Semaphore Rmutex = new Semaphore(1, true);
     Semaphore Wmutex = new Semaphore(1, true);
     Semaphore Mutex2 = new Semaphore(1, true);
     Semaphore Rdb = new Semaphore(1, true);
     Semaphore Wdb = new Semaphore(1, true);
 
-    public Database(int range, int Y) {
-        readers = Y;
+    public Database(int range) {
         databaseUpdates = new TempDataList();
         cacheUpdates = new TempDataList();
         this.randomRange = range;
@@ -60,11 +55,11 @@ public class Database {
             Rdb.release();
             Mutex2.release();
 
-            RandomAccessFile file = new RandomAccessFile(getFile(x), "r");
+            RandomAccessFile file = new RandomAccessFile(getFile(x), "rw");
             file.seek(getPosition(x));
             Data data = new Data(file.readInt(), file.readInt(), file.readInt());
             if (data.getX() != 0 || ((x == 0) && data.getX() == 0)) {
-                System.out.println("success read from db " + data.toString());
+                System.out.println("db response: " + data.toString());
                 databaseUpdates.put(data);
                 if (data.getZ() >= Server.getCache().getMin_Z()) {
                     cacheUpdates.put(data);
@@ -101,6 +96,7 @@ public class Database {
             Data data;
             if ((data = databaseUpdates.get(x)) != null) {
                 data.updateZ();
+                System.err.println("TempDatabase response: ");
                 return data.getY();
             }
             int y = (int) (Math.random() * randomRange) + 1;
@@ -109,6 +105,7 @@ public class Database {
             if (databaseUpdates.size() > updatesSize) {
                 callWriter();
             }
+            System.err.println("Generated response: ");
             return y;
         } finally {
             lock.unlock();
