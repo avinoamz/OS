@@ -5,55 +5,52 @@
  */
 package os1;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
+ * Database.
  *
- * @author Avinoam
+ * @databaseUpdates - Synchronized HashMap that saves future database updates.
+ * @cacheUpdates - Synchronized HashMap that saves future cache updates.
+ * @updateSize - Defines the amount of queries until update triggers.
+ * @fileSize - Defines the size of each file in database.
+ * @readSize - Define the jumps in database (int * 3) = (x,y,z).
+ * @randomRange - The Database range for drawing new responds for queries.
  */
 public class Database {
 
-    private TempDataList databaseUpdates, cacheUpdates;
+    private SyncedHashMap databaseUpdates, cacheUpdates;
     private final ReentrantLock lock = new ReentrantLock(true);
     private final int updatesSize = 50; // what size?
     private boolean updateNeeded = false;
     private final int fileSize = 1000; // size?
     private final int readSize = Integer.BYTES * 3;
     private final int randomRange;
-    private int writers = 0;
-    private int readers = 0;
-    Semaphore Rmutex = new Semaphore(1, true);
-    Semaphore Wmutex = new Semaphore(1, true);
-    Semaphore Mutex2 = new Semaphore(1, true);
-    Semaphore Rdb = new Semaphore(1, true);
-    Semaphore Wdb = new Semaphore(1, true);
+    private static final ReadWriteLock locks = Server.getReadWriteLock();
 
     public Database(int range) {
-        databaseUpdates = new TempDataList();
-        cacheUpdates = new TempDataList();
+        databaseUpdates = new SyncedHashMap();
+        cacheUpdates = new SyncedHashMap();
         this.randomRange = range;
     }
 
+    /**
+     * Search for x in the Database. Access the database files using
+     * RandomAccessFile. find the file name and position using getFile and
+     * getPosition functions, and then read the data. If an answer is found,
+     * return it to the S_Thread, else, generate new answer. Also checks if
+     * update is needed.
+     *
+     * @param x query
+     * @return y
+     */
     public int search(int x) {
-        //    lock.lock();
         try {
-            Mutex2.acquire();
-            Rdb.acquire();
-            Rmutex.acquire();
-            readers += 1;
-            if (readers == 1) {
-                Wdb.acquire();
-            }
-            Rmutex.release();
-            Rdb.release();
-            Mutex2.release();
+
+            locks.ReadLock();
 
             RandomAccessFile file = new RandomAccessFile(getFile(x), "rw");
             file.seek(getPosition(x));
@@ -76,27 +73,25 @@ public class Database {
         } catch (Exception ex) {
             return generate(x);
         } finally {
-            try {
-                // lock.unlock();
-                Rmutex.acquire();
-                readers -= 1;
-                if (readers == 0) {
-                    Wdb.release();
-                }
-                Rmutex.release();
-            } catch (InterruptedException ex) {
-                Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            locks.ReadUnlock();
         }
     }
 
+    /**
+     * Generate new answers if not found in the Database. Generate a new
+     * response, and returns the answer to the S_Thread. Also adds the answer to
+     * databaseUpdates. P.S - before generating a new response, check if it
+     * already exist in databaseUpdates.
+     *
+     * @param x the query
+     * @return y
+     */
     private int generate(int x) {
         lock.lock();
         try {
             Data data;
             if ((data = databaseUpdates.get(x)) != null) {
                 data.updateZ();
-                System.err.println("TempDatabase response: ");
                 return data.getY();
             }
             int y = (int) (Math.random() * randomRange) + 1;
@@ -105,27 +100,26 @@ public class Database {
             if (databaseUpdates.size() > updatesSize) {
                 callWriter();
             }
-            System.err.println("Generated response: ");
             return y;
         } finally {
             lock.unlock();
         }
     }
 
+    // Activate the Database Writer. also activates cache updates.
     private void callWriter() {
-        setUpdateNeeded(true); //setUpdate before or after DB Writer?
+        setUpdateNeeded(true);
         Server.getPool(Server.Type_Writer_Pool).execute(new DatabaseWriter());
     }
 
-    public void update() throws FileNotFoundException, IOException {
+    /**
+     * Updates the Database. Iterates over databaseUpdates, and write it to the
+     * Database files using RandomAccessFile.
+     */
+    public void update() {
         try {
-            Wmutex.acquire();
-            writers += 1;
-            if (writers == 1) {
-                Rdb.acquire();
-            }
-            Wmutex.release();
-            Wdb.acquire();
+
+            locks.WriteLock();
 
             List<Data> list = databaseUpdates.getValues();
             for (int i = 0; i < list.size(); i++) {
@@ -139,22 +133,13 @@ public class Database {
             }
             databaseUpdates.clear();
         } catch (Exception e) {
+            System.err.println("Error updating database");
         } finally {
-            try {
-                Wdb.release();
-                Wmutex.acquire();
-                writers -= 1;
-                if (writers == 0) {
-                    Rdb.release();
-                }
-                Wmutex.release();
-            } catch (InterruptedException ex) {
-                Logger.getLogger(Database.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            locks.WriteUnlock();
         }
     }
 
-    // lock functions?
+    // Returns the file name that holds x.
     private String getFile(int x) {
         if (x < 0) {
             return "C:\\Users\\Avinoam\\Documents\\OS1\\OS1\\OS1\\database/file_" + ((x / fileSize) - 1) * fileSize;
@@ -162,6 +147,7 @@ public class Database {
         return "C:\\Users\\Avinoam\\Documents\\OS1\\OS1\\OS1\\database/file_" + (x / fileSize) * fileSize;
     }
 
+    // Returns the location of x inside the file.
     private int getPosition(int x) {
         return Math.abs(x % (fileSize)) * readSize;
     }
@@ -174,11 +160,11 @@ public class Database {
         this.updateNeeded = updateNeeded;
     }
 
-    public TempDataList getCacheUpdates() {
+    public SyncedHashMap getCacheUpdates() {
         return cacheUpdates;
     }
 
-    public void setCacheUpdates(TempDataList cacheUpdates) {
+    public void setCacheUpdates(SyncedHashMap cacheUpdates) {
         this.cacheUpdates = cacheUpdates;
     }
 
@@ -186,20 +172,25 @@ public class Database {
         cacheUpdates.clear();
     }
 
-    public TempDataList getDatabaseUpdates() {
+    public SyncedHashMap getDatabaseUpdates() {
         return databaseUpdates;
     }
 
-    public void setDatabaseUpdates(TempDataList databaseUpdates) {
+    public void setDatabaseUpdates(SyncedHashMap databaseUpdates) {
         this.databaseUpdates = databaseUpdates;
     }
 }
 
+/**
+ * Y Reader. The Thread that search in the Database by calling the search
+ * method. Semaphore is used to update the S_Thread that the search is
+ * completed.
+ */
 class DatabaseReader implements Runnable {
 
-    private S_Thread thread;
-    private int query, answer;
-    private Semaphore semaphore;
+    private final S_Thread thread;
+    private final int query;
+    private final Semaphore semaphore;
 
     public DatabaseReader(S_Thread thread) {
         this.thread = thread;
@@ -214,16 +205,14 @@ class DatabaseReader implements Runnable {
     }
 }
 
+/**
+ * W Thread. The Thread that updates the Database by calling the update method.
+ * while update is running, all reading from Database is blocked.
+ */
 class DatabaseWriter implements Runnable {
 
     @Override
     public void run() {
-
-        try {
-            Server.getDatabase().update();
-        } catch (Exception e) {
-            System.out.println("Error updating database");
-        }
+        Server.getDatabase().update();
     }
-
 }

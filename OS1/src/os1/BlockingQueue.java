@@ -11,8 +11,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
- * @author Avinoam
+ * A queue that blocks pulling from it when its empty.
  */
 public class BlockingQueue {
 
@@ -20,6 +19,7 @@ public class BlockingQueue {
     private final Condition hasItems = lock.newCondition();
     private List queue = new LinkedList();
 
+    //Add item
     public void enqueue(Object obj) {
         lock.lock();
         try {
@@ -30,6 +30,7 @@ public class BlockingQueue {
         }
     }
 
+    //Remove item
     public Object dequeue() throws InterruptedException {
         lock.lock();
         try {
@@ -42,8 +43,7 @@ public class BlockingQueue {
         }
     }
 
-    //
-    // needed?
+    //Check if queue is empty
     public boolean isEmpty() {
         lock.lock();
         try {

@@ -8,8 +8,8 @@ package os1;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
- * @author Avinoam
+ * The executable Thread of the Thread Pools. Runs in loop, trying to pull tasks
+ * from the task queue, and execute them.
  */
 public class TaskExecutingThread extends Thread {
 

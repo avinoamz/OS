@@ -10,8 +10,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 /**
- *
- * @author Avinoam
+ * A Class that represents Socket's Input and Output Streams.
  */
 public class Streams {
 

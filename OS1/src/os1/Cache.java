@@ -14,8 +14,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
- * @author Avinoam
+ * Manages the Cache.
  */
 public class Cache {
 
@@ -23,6 +22,12 @@ public class Cache {
     private static HashMap<Integer, Data> memory;
     private final ReentrantLock lock = new ReentrantLock(true);
 
+    /**
+     * Cache constructor.
+     *
+     * @param C Cache size
+     * @param M Minimum Z to enter the cache
+     */
     public Cache(int C, int M) {
         this.C = C;
         cacheSize = C;
@@ -31,7 +36,14 @@ public class Cache {
         memory = new HashMap<>();
     }
 
-    // need lock?
+    /**
+     * Searching for x in the Cache HashMap. if an answer is found in the cache,
+     * increase Z and return the answer to the S_Thread. After the search is
+     * completed, check if cache update is needed.
+     *
+     * @param x query
+     * @return the answer - y
+     */
     public int search(int x) {
         lock.lock();
         try {
@@ -49,6 +61,13 @@ public class Cache {
         }
     }
 
+    /**
+     * Checks if cache update is needed. if so, merge the cache hashmap and the
+     * updates hashmap, sort them by Z, and take the highest queries. also
+     * update minimum Z (by taking the least Z in the hashmap).
+     *
+     * @param memory The Cache HashMap.
+     */
     private void checkForUpdates() {
         if (Server.getDatabase().isUpdateNeeded()) {
             HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates().getAll();
@@ -97,12 +116,22 @@ public class Cache {
 
 }
 
+/**
+ * C Thread. The only thread that access the cache. Searching for answers, and
+ * updating the cache.
+ */
 class CacheSearcher implements Runnable {
 
     private final S_Thread thread;
     private final int query;
     private final Semaphore semaphore;
 
+    /**
+     * @param thread The S_Thread that called this thread.
+     * @param query The x that we are looking for.
+     * @param semaphore The blocking sempahore, used to make the S_Thread wait
+     * for the cache search to finish.
+     */
     public CacheSearcher(S_Thread thread) {
         this.thread = thread;
         semaphore = thread.getSemaphore();

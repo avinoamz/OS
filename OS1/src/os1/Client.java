@@ -13,8 +13,13 @@ import java.nio.file.Paths;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * Client. Recieve number range to choose from, and probability file. opens a
+ * socket, and send queries (x) to the server in loop. (choose numbers to send
+ * according to probability).
  *
- * @author Avinoam
+ * @UserNumberPool - Represents the next Client ID.
+ * @probability[] - Array that holds the statistic for each number.
+ * @userNum - This Client ID.
  */
 public class Client implements Runnable {
 
@@ -22,7 +27,7 @@ public class Client implements Runnable {
     private static final ReentrantLock lock = new ReentrantLock(true);
     private int[] probability = new int[1000];
     private int R1, R2;
-    String filename;
+    private String filename;
     private int userNum;
     private Socket socket;
     private ObjectInputStream in;
@@ -31,13 +36,22 @@ public class Client implements Runnable {
     private int intResponse;
     private boolean keepRunning = true;
 
+    /**
+     * Build probability array. For each number in range, add it to the
+     * probability array in the following amount: (probability chance * 1000).
+     * Afterwards, when we want to chooce a random number 'num', we draw from
+     * [0,999], and take array[num].
+     *
+     * @param R1 Draws number between [R1,R2]
+     * @param R2
+     * @param filename The file to read from.
+     */
     public Client(int R1, int R2, String filename) {
         this.R1 = R1;
         this.R2 = R2;
         this.filename = filename;
         String content;
         String[] contentArr;
-        // lock?
         userNum = getNumber();
 
         try {
@@ -62,6 +76,7 @@ public class Client implements Runnable {
         }
     }
 
+    // Give ID to Clients.
     private int getNumber() {
         lock.lock();
         try {
@@ -71,6 +86,10 @@ public class Client implements Runnable {
         }
     }
 
+    /**
+     * Runs in loop, draw random number from probability array, send it to the
+     * server, recieve an answer, and print it.
+     */
     @Override
     public void run() {
         try {

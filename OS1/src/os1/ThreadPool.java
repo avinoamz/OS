@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
- * @author Avinoam
+ * Thread Pool. Holds a Task Queue, and a fixed amount of Threads that tries to
+ * pull tasks from the queue and execute them.
  */
 public class ThreadPool {
 
@@ -41,7 +41,7 @@ public class ThreadPool {
 //            thread.start();
 //        }
 //    }
-
+    // Adds a Task to the Queue.
     public void execute(Runnable task) {
         lock.lock();
         try {
@@ -57,10 +57,10 @@ public class ThreadPool {
     public void shutdown() {
         lock.lock();
         try {
-            alive = false;
             for (TaskExecutingThread thread : threads) {
                 thread.stopRunning();
             }
+            alive = false;
         } finally {
             lock.unlock();
         }

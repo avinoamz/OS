@@ -8,23 +8,23 @@ package os1;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * Main Server. Initialize the Thread Pools, and listen to new client
+ * connections.
  *
- * @author Avinoam
  */
 public class Server implements Runnable {
 
     private ServerSocket serverSocket;
-    private int S, C, M, L, Y;
+    private final int S, C, M, L, Y;
     private static int randomRange;
     private static ThreadPool S_Pool, Cache_Pool, Readers_Pool, Writer_Pool;
     private static Cache cache;
     private static Database database;
-    private static final TempDataList tempDataList = new TempDataList();
+    private static ReadWriteLock readWriteLock = new ReadWriteLock();
+    private static final SyncedHashMap tempDataList = new SyncedHashMap();
     private static final ArrayList<Streams> clients = new ArrayList();
-    private final ReentrantLock lock = new ReentrantLock(true);
     public static final int Type_S_Pool = 1;
     public static final int Type_Cache_Pool = 2;
     public static final int Type_Readers_Pool = 3;
@@ -44,22 +44,26 @@ public class Server implements Runnable {
         try {
             serverSocket = new ServerSocket(45000);
 
+            // A Thread that listens to client Sockets.
             new Thread(new socketsReader(clients)).start();
 
             S_Pool = new ThreadPool(S);
-            //cache pool size?
-            Cache_Pool = new ThreadPool(1);
             Readers_Pool = new ThreadPool(Y);
+            Cache_Pool = new ThreadPool(1);
             Writer_Pool = new ThreadPool(1);
 
             cache = new Cache(C, M);
-            database = new Database(randomRange);
+            database = new Database(L);
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
         }
     }
 
+    /**
+     * Listens for new Clients connections. Adds each new Socket connection to
+     * ArrayList of Streams.
+     */
     @Override
     public void run() {
 
@@ -76,6 +80,7 @@ public class Server implements Runnable {
         }
     }
 
+    // Returns a Thread Pool based on type.
     public static ThreadPool getPool(int type) {
         switch (type) {
             case 1:
@@ -106,8 +111,20 @@ public class Server implements Runnable {
     public static Database getDatabase() {
         return database;
     }
+
+    public static ReadWriteLock getReadWriteLock() {
+        return readWriteLock;
+    }
+
+    public static void setReadWriteLock(ReadWriteLock readWriteLock) {
+        Server.readWriteLock = readWriteLock;
+    }
 }
 
+/**
+ * A Thread that listens to the Clients Sockets. Iterates over the Clients
+ * Sockets, and read queries.
+ */
 class socketsReader implements Runnable {
 
     private ArrayList<Streams> clients;
@@ -121,6 +138,7 @@ class socketsReader implements Runnable {
     public void run() {
 
         while (true) {
+            //sleep while there are no clients connected.
             while (clients.isEmpty()) {
                 try {
                     Thread.sleep(10);
@@ -132,7 +150,7 @@ class socketsReader implements Runnable {
                 Thread readData = new Thread(new socketDataReader(stream));
                 readData.start();
                 try {
-                    // set const waiting time ?
+                    // in case a socket is stuck, move to the next socket after 100ms
                     int time = 0;
                     while (readData.isAlive() && time < 10) {
                         Thread.sleep(10);

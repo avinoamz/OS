@@ -6,17 +6,15 @@
 package os1;
 
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
 
 /**
- *
- * @author Avinoam
+ * Thread that reads data from Sockets. Listen to a Socket, and starts an
+ * S_Thread based on queries.
  */
 public class socketDataReader implements Runnable {
 
     private ObjectInputStream in;
-    private Streams stream;
+    private final Streams stream;
     private int msg;
 
     public socketDataReader(Streams stream) {
@@ -28,8 +26,6 @@ public class socketDataReader implements Runnable {
         try {
             in = stream.getIn();
             msg = (int) in.readObject();
-            // 
-            // S_Thread param?
             Thread query = new Thread(new S_Thread(stream, msg));
             Server.getPool(Server.Type_S_Pool).execute(query);
 

@@ -11,14 +11,14 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
- * @author Avinoam
+ * Synchronized HashMap. Used for temporary data sturctures.
  */
-public class TempDataList {
+public class SyncedHashMap {
 
     private final HashMap<Integer, Data> map = new HashMap();
     private final ReentrantLock lock = new ReentrantLock(true);
 
+    // Adds a query to the HashMap, and increase it by 1.
     public void put(Data num) {
         lock.lock();
         try {

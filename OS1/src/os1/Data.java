@@ -7,6 +7,9 @@ package os1;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Class that represents (X,Y,Z).
+ */
 public class Data {
 
     private int x, y, z;
@@ -78,6 +81,7 @@ public class Data {
         }
     }
 
+    // Increase Z.
     public void updateZ() {
         lock.lock();
         try {
