@@ -23,6 +23,7 @@ public class socketDataReader implements Runnable {
 
     @Override
     public void run() {
+        Thread.currentThread().setName("SocketDataReader");
         try {
             in = stream.getIn();
             msg = (int) in.readObject();
@@ -30,6 +31,7 @@ public class socketDataReader implements Runnable {
             Server.getPool(Server.Type_S_Pool).execute(query);
 
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println("Error reading from socket");
         }
     }

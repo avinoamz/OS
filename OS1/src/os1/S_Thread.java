@@ -31,6 +31,7 @@ public class S_Thread implements Runnable {
 
     @Override
     public void run() {
+        Thread.currentThread().setName("S_Thread");
 
         try {
             Server.getPool(Server.Type_Cache_Pool).execute(new CacheSearcher(this));

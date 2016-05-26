@@ -9,6 +9,7 @@ import java.io.RandomAccessFile;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.swing.filechooser.FileSystemView;
 
 /**
  * Database.
@@ -24,17 +25,20 @@ public class Database {
 
     private SyncedHashMap databaseUpdates, cacheUpdates;
     private final ReentrantLock lock = new ReentrantLock(true);
-    private final int updatesSize = 50; // what size?
+    private final int updatesSize; // what size?
     private boolean updateNeeded = false;
     private final int fileSize = 1000; // size?
     private final int readSize = Integer.BYTES * 3;
     private final int randomRange;
     private static final ReadWriteLock locks = Server.getReadWriteLock();
+    private final String folder;
 
-    public Database(int range) {
+    public Database(int range, int size) {
+        this.folder = FileSystemView.getFileSystemView().getDefaultDirectory().getPath();
         databaseUpdates = new SyncedHashMap();
         cacheUpdates = new SyncedHashMap();
         this.randomRange = range;
+        updatesSize = size;
     }
 
     /**
@@ -95,7 +99,7 @@ public class Database {
                 return data.getY();
             }
             int y = (int) (Math.random() * randomRange) + 1;
-            data = new Data(x, y, 1);
+            data = new Data(x, y, 0);
             databaseUpdates.put(data);
             if (databaseUpdates.size() > updatesSize) {
                 callWriter();
@@ -123,7 +127,7 @@ public class Database {
 
             List<Data> list = databaseUpdates.getValues();
             for (int i = 0; i < list.size(); i++) {
-                Data data = databaseUpdates.get(list.get(i).getX());
+                Data data = list.get(i);
                 RandomAccessFile file = new RandomAccessFile(getFile(data.getX()), "rw");
                 file.seek(getPosition(data.getX()));
                 file.writeInt(data.getX());
@@ -173,7 +177,12 @@ public class Database {
     }
 
     public SyncedHashMap getDatabaseUpdates() {
-        return databaseUpdates;
+        lock.lock();
+        try {
+            return databaseUpdates;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setDatabaseUpdates(SyncedHashMap databaseUpdates) {
@@ -200,6 +209,7 @@ class DatabaseReader implements Runnable {
 
     @Override
     public void run() {
+        Thread.currentThread().setName("DatabaseReader");
         thread.setAnswer(Server.getDatabase().search(query));
         semaphore.release();
     }
@@ -213,6 +223,7 @@ class DatabaseWriter implements Runnable {
 
     @Override
     public void run() {
+        Thread.currentThread().setName("DatabaseWriter");
         Server.getDatabase().update();
     }
 }

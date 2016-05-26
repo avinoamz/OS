@@ -28,19 +28,7 @@ public class ThreadPool {
             thread.start();
         }
     }
-
-    //
-    // family?
-//    public ThreadPool(int size, String familyName) {
-//        for (int i = 0; i < size; i++) {
-//            threads.add(new TaskExecutingThread(taskQueue));
-//        }
-//        int familyId = 0;
-//        for (TaskExecutingThread thread : threads) {
-//            thread.setName(familyName + (familyId++));
-//            thread.start();
-//        }
-//    }
+    
     // Adds a Task to the Queue.
     public void execute(Runnable task) {
         lock.lock();

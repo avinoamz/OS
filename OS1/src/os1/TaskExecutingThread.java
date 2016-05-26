@@ -21,8 +21,6 @@ public class TaskExecutingThread extends Thread {
         taskQueue = queue;
     }
 
-    //
-    // starvation?
     @Override
     public void run() {
         while (keepRunning()) {

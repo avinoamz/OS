@@ -92,6 +92,7 @@ public class Client implements Runnable {
      */
     @Override
     public void run() {
+        Thread.currentThread().setName("Client");
         try {
             socket = new Socket("localhost", 45000);
             Streams stream = new Streams(socket);

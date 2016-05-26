@@ -140,6 +140,7 @@ class CacheSearcher implements Runnable {
 
     @Override
     public void run() {
+        Thread.currentThread().setName("CacheSearcher");
         thread.setAnswer(Server.getCache().search(query));
         semaphore.release();
     }

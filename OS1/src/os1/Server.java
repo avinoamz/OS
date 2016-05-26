@@ -46,14 +46,15 @@ public class Server implements Runnable {
 
             // A Thread that listens to client Sockets.
             new Thread(new socketsReader(clients)).start();
-
+            new Thread(new socketsReader(clients)).start();
+            
             S_Pool = new ThreadPool(S);
             Readers_Pool = new ThreadPool(Y);
             Cache_Pool = new ThreadPool(1);
             Writer_Pool = new ThreadPool(1);
 
             cache = new Cache(C, M);
-            database = new Database(L);
+            database = new Database(L, C);
 
         } catch (Exception e) {
             System.out.println("Error initiating server");
@@ -66,6 +67,7 @@ public class Server implements Runnable {
      */
     @Override
     public void run() {
+        Thread.currentThread().setName("Server");
 
         while (true) {
             try {
@@ -127,7 +129,7 @@ public class Server implements Runnable {
  */
 class socketsReader implements Runnable {
 
-    private ArrayList<Streams> clients;
+    private final ArrayList<Streams> clients;
     private Streams stream;
 
     public socketsReader(ArrayList clients) {
@@ -136,6 +138,7 @@ class socketsReader implements Runnable {
 
     @Override
     public void run() {
+        Thread.currentThread().setName("SocketsReader");
 
         while (true) {
             //sleep while there are no clients connected.
@@ -150,13 +153,12 @@ class socketsReader implements Runnable {
                 Thread readData = new Thread(new socketDataReader(stream));
                 readData.start();
                 try {
-                    // in case a socket is stuck, move to the next socket after 100ms
+                    // in case a socket is stuck, move to the next socket after 1000ms
                     int time = 0;
                     while (readData.isAlive() && time < 10) {
-                        Thread.sleep(10);
+                        Thread.sleep(100);
                         time++;
                     }
-                    // interrupt works as intended?
                     readData.interrupt();
                 } catch (Exception e) {
                     System.out.println("Join error");
