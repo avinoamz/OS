@@ -25,6 +25,10 @@ public class Server implements Runnable {
     private static ReadWriteLock readWriteLock = new ReadWriteLock();
     private static final SyncedHashMap tempDataList = new SyncedHashMap();
     private static final ArrayList<Streams> clients = new ArrayList();
+    private static final ArrayList<Streams> clients2 = new ArrayList();
+    private static final ArrayList<Streams> clients3 = new ArrayList();
+    private static final ArrayList<Streams> clients4 = new ArrayList();
+    private static final ArrayList<Streams> clients5 = new ArrayList();
     public static final int Type_S_Pool = 1;
     public static final int Type_Cache_Pool = 2;
     public static final int Type_Readers_Pool = 3;
@@ -46,8 +50,11 @@ public class Server implements Runnable {
 
             // A Thread that listens to client Sockets.
             new Thread(new socketsReader(clients)).start();
-            new Thread(new socketsReader(clients)).start();
-            
+            new Thread(new socketsReader(clients2)).start();
+            new Thread(new socketsReader(clients3)).start();
+            new Thread(new socketsReader(clients4)).start();
+            new Thread(new socketsReader(clients5)).start();
+
             S_Pool = new ThreadPool(S);
             Readers_Pool = new ThreadPool(Y);
             Cache_Pool = new ThreadPool(1);
@@ -75,7 +82,26 @@ public class Server implements Runnable {
                 //
                 // need lock?
                 Streams stream = new Streams(clientSocket);
-                clients.add(stream);
+                int rand = (int) (Math.random() * 5) + 1;
+           //     clients.add(stream);
+                switch (rand) {
+                    case 1:
+                        clients.add(stream);
+                        break;
+                    case 2:
+                        clients2.add(stream);
+                        break;
+                    case 4:
+                        clients4.add(stream);
+                        break;
+                    case 5:
+                        clients5.add(stream);
+                        break;
+                    default:
+                        clients3.add(stream);
+                        break;
+                }
+
             } catch (Exception e) {
                 System.out.println("Error accepting socket");
             }
