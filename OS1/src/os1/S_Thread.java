@@ -5,7 +5,7 @@
  */
 package os1;
 
-import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -14,16 +14,17 @@ import java.util.concurrent.Semaphore;
  */
 public class S_Thread implements Runnable {
 
+    private Streams stream;
     private int msg, answer;
     private Semaphore semaphore;
-    private ObjectOutputStream out;
+    private PrintWriter out;
 
     public S_Thread(Streams stream, int msg) {
         this.msg = msg;
         semaphore = new Semaphore(0);
+        this.stream = stream;
         try {
             out = stream.getOut();
-            out.flush();
         } catch (Exception e) {
             System.err.println("Error starting S_Thread");
         }
@@ -38,8 +39,7 @@ public class S_Thread implements Runnable {
             // waits until cache search is completed.
             semaphore.acquire();
             if (answer != -1) {
-                out.writeObject(answer);
-                out.flush();
+                out.println(answer);
             } else {
                 Server.getPool(Server.Type_Readers_Pool).execute(new DatabaseReader(this));
                 // waits until database search is completed.
@@ -48,8 +48,7 @@ public class S_Thread implements Runnable {
                 if (answer == -1) {
                     System.out.println("Error generating response");
                 }
-                out.writeObject(answer);
-                out.flush();
+                out.println(answer);
             }
         } catch (Exception e) {
             System.out.println("S_Thread error while finding answer");

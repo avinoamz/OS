@@ -26,7 +26,10 @@ public class SyncedHashMap {
             if (value == null) {
                 num.updateZ();
             } else {
+                int temp = value.getZ() + 1;
+                map.remove(num.getX());
                 num.setZ(value.getZ() + 1);
+                map.put(num.getX(), num);
             }
             map.put(num.getX(), num);
         } finally {
@@ -84,6 +87,16 @@ public class SyncedHashMap {
         try {
             List<Data> values = new ArrayList(map.values());
             return values;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public HashMap<Integer, Data> cloneMap() {
+        lock.lock();
+        try {
+            HashMap<Integer, Data> tempMap = (HashMap<Integer, Data>) map.clone();
+            return tempMap;
         } finally {
             lock.unlock();
         }

@@ -23,15 +23,21 @@ public class OS1 {
             f.delete();
         }
         // Server args: S_Threads, Cache size, MinZ, randomRange, databaseReaders
-        new Thread(new Server(10, 50, 5, 100, 10)).start();
-        new Thread(new Client(-5, 4, "1.txt")).start();
-        new Thread(new Client(-5, 4, "1.txt")).start();
-        new Thread(new Client(-5, 4, "1.txt")).start();
-        new Thread(new Client(-5, 4, "1.txt")).start();
-        new Thread(new Client(-5, 4, "1.txt")).start();
-   //     new Thread(new Client(-5, 4, "3.txt")).start();
+        new Thread(new Server(3, 50, 5, 100, 3)).start();
 
-
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "3.txt")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "4.txt")).start();
+        new Thread(new Client(-5, 4, "file.txt")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "file.txt")).start();
+        new Thread(new Client(-5, 4, "4.txt")).start();
+        new Thread(new Client(-5, 4, "1.txt")).start();
+        new Thread(new Client(-5, 4, "5.txt")).start();
+        new Thread(new Client(-5, 4, "file.txt")).start();
+        new Thread(new Client(-5, 4, "file.txt")).start();
+        new Thread(new Client(-5, 4, "5.txt")).start();
     }
-
 }

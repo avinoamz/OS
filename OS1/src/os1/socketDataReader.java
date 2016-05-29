@@ -5,7 +5,7 @@
  */
 package os1;
 
-import java.io.ObjectInputStream;
+import java.io.BufferedReader;
 
 /**
  * Thread that reads data from Sockets. Listen to a Socket, and starts an
@@ -13,7 +13,7 @@ import java.io.ObjectInputStream;
  */
 public class socketDataReader implements Runnable {
 
-    private ObjectInputStream in;
+    private BufferedReader in;
     private final Streams stream;
     private int msg;
 
@@ -26,7 +26,8 @@ public class socketDataReader implements Runnable {
         Thread.currentThread().setName("SocketDataReader");
         try {
             in = stream.getIn();
-            msg = (int) in.readObject();
+            String str = in.readLine();
+            msg = Integer.parseInt(str);
             Thread query = new Thread(new S_Thread(stream, msg));
             Server.getPool(Server.Type_S_Pool).execute(query);
 

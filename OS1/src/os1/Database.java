@@ -6,6 +6,10 @@
 package os1;
 
 import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
@@ -25,20 +29,24 @@ public class Database {
 
     private SyncedHashMap databaseUpdates, cacheUpdates;
     private final ReentrantLock lock = new ReentrantLock(true);
-    private final int updatesSize; // what size?
+    private int databaseUpdateSize; // what size?
+    private int cacheUpdateSize;
     private boolean updateNeeded = false;
-    private final int fileSize = 1000; // size?
+    private final int fileSize = 500; // size?
     private final int readSize = Integer.BYTES * 3;
     private final int randomRange;
     private static final ReadWriteLock locks = Server.getReadWriteLock();
     private final String folder;
+    private final FileLocks locks2;
 
     public Database(int range, int size) {
+        this.locks2 = new FileLocks();
         this.folder = FileSystemView.getFileSystemView().getDefaultDirectory().getPath();
         databaseUpdates = new SyncedHashMap();
         cacheUpdates = new SyncedHashMap();
         this.randomRange = range;
-        updatesSize = size;
+        databaseUpdateSize = 300;
+        cacheUpdateSize = 10;
     }
 
     /**
@@ -52,32 +60,53 @@ public class Database {
      * @return y
      */
     public int search(int x) {
+        ReadWriteLock fileLock = locks2.get(getFile(x));
+        fileLock.ReadLock();
         try {
 
-            locks.ReadLock();
-
-            RandomAccessFile file = new RandomAccessFile(getFile(x), "rw");
+            //    locks2.get(getFile(x)).ReadLock();
+            //   locks.ReadLock();
+            RandomAccessFile file = new RandomAccessFile(getFile(x), "r");
             file.seek(getPosition(x));
             Data data = new Data(file.readInt(), file.readInt(), file.readInt());
-            if (data.getX() != 0 || ((x == 0) && data.getX() == 0)) {
-                System.out.println("db response: " + data.toString());
+            file.close();
+            if (data.getX() != 0) {
+                //   System.out.println("db response: " + data.toString());
                 databaseUpdates.put(data);
                 if (data.getZ() >= Server.getCache().getMin_Z()) {
+                    // double up 
+                    // double up temporary fix
+                    // double up 
+                    data.setZ(data.getZ() - 1);
                     cacheUpdates.put(data);
+                    if (cacheUpdates.size() > cacheUpdateSize) {
+                        setUpdateNeeded(true);
+                        if (cacheUpdateSize < (databaseUpdateSize / 3)) {
+                            cacheUpdateSize++;
+                        }
+                    }
                 }
                 // depends on size, or times accessed?
-                if (databaseUpdates.size() > updatesSize) {
+                if (databaseUpdates.size() > databaseUpdateSize) {
                     callWriter();
                 }
-                file.close();
                 return data.getY();
+            } else if (x == 0) {
+                if (data.getY() != 0) {
+                    return data.getY();
+                } else {
+                    return generate(x);
+                }
             } else {
                 return generate(x);
             }
         } catch (Exception ex) {
+            //  ex.printStackTrace();
             return generate(x);
         } finally {
-            locks.ReadUnlock();
+            fileLock.ReadUnlock();
+            //   locks2.get(getFile(x)).ReadUnlock();
+            // locks.ReadUnlock();
         }
     }
 
@@ -91,28 +120,28 @@ public class Database {
      * @return y
      */
     private int generate(int x) {
-        lock.lock();
+        //  lock.lock();
         try {
             Data data;
             if ((data = databaseUpdates.get(x)) != null) {
                 data.updateZ();
+                // System.err.println("TEMP DB response: " + data.toString());
                 return data.getY();
             }
             int y = (int) (Math.random() * randomRange) + 1;
             data = new Data(x, y, 0);
             databaseUpdates.put(data);
-            if (databaseUpdates.size() > updatesSize) {
+            if (databaseUpdates.size() > databaseUpdateSize) {
                 callWriter();
             }
             return y;
         } finally {
-            lock.unlock();
+            //   lock.unlock();
         }
     }
 
-    // Activate the Database Writer. also activates cache updates.
+    // Activate the Database Writer.
     private void callWriter() {
-        setUpdateNeeded(true);
         Server.getPool(Server.Type_Writer_Pool).execute(new DatabaseWriter());
     }
 
@@ -121,25 +150,44 @@ public class Database {
      * Database files using RandomAccessFile.
      */
     public void update() {
+
         try {
 
-            locks.WriteLock();
+            HashMap<Integer, Data> tempMap = databaseUpdates.cloneMap();
+            databaseUpdates.clear();
+            List<Data> list = new ArrayList(tempMap.values());
+            Collections.sort(list, new Comparator<Data>() {
+                @Override
+                public int compare(Data o1, Data o2) {
+                    return ((Integer) o1.getX()).compareTo((Integer) o2.getX());
+                }
+            });
 
-            List<Data> list = databaseUpdates.getValues();
             for (int i = 0; i < list.size(); i++) {
+
+                ReadWriteLock fileLock = locks2.get(getFile(list.get(i).getX()));
+                fileLock.WriteLock();
+
                 Data data = list.get(i);
                 RandomAccessFile file = new RandomAccessFile(getFile(data.getX()), "rw");
-                file.seek(getPosition(data.getX()));
-                file.writeInt(data.getX());
-                file.writeInt(data.getY());
-                file.writeInt(data.getZ());
+                do {
+                    data = list.get(i);
+                    file.seek(getPosition(data.getX()));
+                    file.writeInt(data.getX());
+                    file.writeInt(data.getY());
+                    file.writeInt(data.getZ());
+                    i++;
+                } while (i < list.size() && (getFile(list.get(i - 1).getX()).equals(getFile(list.get(i).getX()))));
+
                 file.close();
+                fileLock.WriteUnlock();
             }
-            databaseUpdates.clear();
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println("Error updating database");
         } finally {
-            locks.WriteUnlock();
+            //unlock all locks ?
+            //    locks.WriteUnlock();
         }
     }
 
@@ -157,23 +205,48 @@ public class Database {
     }
 
     public boolean isUpdateNeeded() {
-        return updateNeeded;
+        lock.lock();
+        try {
+            return updateNeeded;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setUpdateNeeded(boolean updateNeeded) {
-        this.updateNeeded = updateNeeded;
+        lock.lock();
+        try {
+            this.updateNeeded = updateNeeded;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public SyncedHashMap getCacheUpdates() {
-        return cacheUpdates;
+        lock.lock();
+        try {
+            return cacheUpdates;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void setCacheUpdates(SyncedHashMap cacheUpdates) {
-        this.cacheUpdates = cacheUpdates;
+        lock.lock();
+        try {
+            this.cacheUpdates = cacheUpdates;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void clearCacheUpdates() {
-        cacheUpdates.clear();
+        lock.lock();
+        try {
+            cacheUpdates.clear();
+        } finally {
+            lock.unlock();
+        }
     }
 
     public SyncedHashMap getDatabaseUpdates() {
@@ -186,7 +259,13 @@ public class Database {
     }
 
     public void setDatabaseUpdates(SyncedHashMap databaseUpdates) {
-        this.databaseUpdates = databaseUpdates;
+        lock.lock();
+        try {
+            this.databaseUpdates = databaseUpdates;
+        } finally {
+            lock.unlock();
+        }
+
     }
 }
 

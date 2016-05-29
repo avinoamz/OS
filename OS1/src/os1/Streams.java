@@ -5,41 +5,54 @@
  */
 package os1;
 
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * A Class that represents Socket's Input and Output Streams.
  */
 public class Streams {
 
-    private ObjectInputStream in;
-    private ObjectOutputStream out;
+    private final ReentrantLock lock = new ReentrantLock(true);
+    private PrintWriter out;
+    private BufferedReader in;
 
     public Streams(Socket socket) {
         try {
-            out = new ObjectOutputStream(socket.getOutputStream());
-            in = new ObjectInputStream(socket.getInputStream());
+            out = new PrintWriter(socket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         } catch (Exception e) {
             System.out.println("Error creating Streams");
         }
     }
 
-    public ObjectInputStream getIn() {
+    public BufferedReader getIn() {
         return in;
     }
 
-    public void setIn(ObjectInputStream in) {
+    public void setIn(BufferedReader in) {
         this.in = in;
     }
 
-    public ObjectOutputStream getOut() {
+    public PrintWriter getOut() {
         return out;
     }
 
-    public void setOut(ObjectOutputStream out) {
+    public void setOut(PrintWriter out) {
         this.out = out;
     }
 
+    public void send(int msg) {
+        lock.lock();
+        try {
+            out.println(msg);
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    
 }

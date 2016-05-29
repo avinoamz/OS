@@ -7,7 +7,6 @@ package os1;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -49,7 +48,6 @@ public class Cache {
         try {
             Data data = memory.get(x);
             if (data != null) {
-                data.updateZ();
                 Server.getDatabase().getDatabaseUpdates().put(data);
                 System.out.println("Cache response: " + data.toString());
                 return data.getY();
@@ -70,29 +68,27 @@ public class Cache {
      */
     private void checkForUpdates() {
         if (Server.getDatabase().isUpdateNeeded()) {
+            new Thread(new CacheUpdater()).start();
+        }
+    }
+
+    public void update() {
+        lock.lock();
+        try {
             HashMap<Integer, Data> updates = Server.getDatabase().getCacheUpdates().getAll();
             memory.putAll(updates);
-
-            List<Data> values = new ArrayList(memory.values());
-            Collections.sort(values, new Comparator<Data>() {
-                @Override
-                public int compare(Data o1, Data o2) {
-                    return ((Integer) o2.getZ()).compareTo((Integer) o1.getZ());
-                }
-            });
-
-            //
-            // check indexs
-            if (values.size() > cacheSize) {
+            if (memory.size() > cacheSize) {
+                List<Data> values = new ArrayList(memory.values());
+                Collections.sort(values);
                 for (int i = cacheSize; i < values.size(); i++) {
                     memory.remove(values.get(i).getX());
                 }
                 setMin_Z(values.get(cacheSize - 1).getZ());
-            } else if (!values.isEmpty()) {
-                setMin_Z(values.get(values.size() - 1).getZ());
             }
             Server.getDatabase().clearCacheUpdates();
             Server.getDatabase().setUpdateNeeded(false);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -143,5 +139,13 @@ class CacheSearcher implements Runnable {
         Thread.currentThread().setName("CacheSearcher");
         thread.setAnswer(Server.getCache().search(query));
         semaphore.release();
+    }
+}
+
+class CacheUpdater implements Runnable {
+
+    @Override
+    public void run() {
+        Server.getCache().update();
     }
 }

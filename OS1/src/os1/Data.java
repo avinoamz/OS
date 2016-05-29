@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Class that represents (X,Y,Z).
  */
-public class Data {
+public class Data implements Comparable<Data> {
 
     private int x, y, z;
     private final ReentrantLock lock = new ReentrantLock(true);
@@ -94,6 +94,15 @@ public class Data {
     @Override
     public String toString() {
         return "(" + x + "," + y + "," + z + ")";
+    }
+
+    @Override
+    public int compareTo(Data o) {
+        return compare(this, o);
+    }
+
+    public int compare(Data o1, Data o2) {
+        return ((Integer) o2.getZ()).compareTo((Integer) o1.getZ());
     }
 
 }

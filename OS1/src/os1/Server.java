@@ -8,6 +8,8 @@ package os1;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Main Server. Initialize the Thread Pools, and listen to new client
@@ -19,7 +21,7 @@ public class Server implements Runnable {
     private ServerSocket serverSocket;
     private final int S, C, M, L, Y;
     private static int randomRange;
-    private static ThreadPool S_Pool, Cache_Pool, Readers_Pool, Writer_Pool;
+    private static ThreadPool S_Pool, Cache_Pool, Readers_Pool, Writer_Pool, Socket_Pool;
     private static Cache cache;
     private static Database database;
     private static ReadWriteLock readWriteLock = new ReadWriteLock();
@@ -27,12 +29,11 @@ public class Server implements Runnable {
     private static final ArrayList<Streams> clients = new ArrayList();
     private static final ArrayList<Streams> clients2 = new ArrayList();
     private static final ArrayList<Streams> clients3 = new ArrayList();
-    private static final ArrayList<Streams> clients4 = new ArrayList();
-    private static final ArrayList<Streams> clients5 = new ArrayList();
     public static final int Type_S_Pool = 1;
     public static final int Type_Cache_Pool = 2;
     public static final int Type_Readers_Pool = 3;
     public static final int Type_Writer_Pool = 4;
+    public static final int Type_Socket_Pool = 5;
 
     public Server(int S, int C, int M, int L, int Y) {
         this.S = S;
@@ -48,17 +49,16 @@ public class Server implements Runnable {
         try {
             serverSocket = new ServerSocket(45000);
 
-            // A Thread that listens to client Sockets.
-            new Thread(new socketsReader(clients)).start();
-            new Thread(new socketsReader(clients2)).start();
-            new Thread(new socketsReader(clients3)).start();
-            new Thread(new socketsReader(clients4)).start();
-            new Thread(new socketsReader(clients5)).start();
-
             S_Pool = new ThreadPool(S);
             Readers_Pool = new ThreadPool(Y);
             Cache_Pool = new ThreadPool(1);
             Writer_Pool = new ThreadPool(1);
+         //   Socket_Pool = new ThreadPool(3);
+
+            // A Thread that listens to client Sockets.
+            new Thread(new socketsReader(clients)).start();
+            new Thread(new socketsReader(clients2)).start();
+            new Thread(new socketsReader(clients3)).start();
 
             cache = new Cache(C, M);
             database = new Database(L, C);
@@ -75,27 +75,20 @@ public class Server implements Runnable {
     @Override
     public void run() {
         Thread.currentThread().setName("Server");
+        int clientNumber = 0;
+        int location;
 
         while (true) {
             try {
                 Socket clientSocket = serverSocket.accept();
-                //
-                // need lock?
                 Streams stream = new Streams(clientSocket);
-                int rand = (int) (Math.random() * 5) + 1;
-           //     clients.add(stream);
-                switch (rand) {
-                    case 1:
+                location = (clientNumber++) % 3;
+                switch (location) {
+                    case 0:
                         clients.add(stream);
                         break;
-                    case 2:
+                    case 1:
                         clients2.add(stream);
-                        break;
-                    case 4:
-                        clients4.add(stream);
-                        break;
-                    case 5:
-                        clients5.add(stream);
                         break;
                     default:
                         clients3.add(stream);
@@ -119,6 +112,8 @@ public class Server implements Runnable {
                 return Readers_Pool;
             case 4:
                 return Writer_Pool;
+            case 5:
+                return Socket_Pool;
             default:
                 return null;
         }
@@ -176,19 +171,17 @@ class socketsReader implements Runnable {
             }
             for (int i = 0; i < clients.size(); i++) {
                 stream = clients.get(i);
-                Thread readData = new Thread(new socketDataReader(stream));
-                readData.start();
+              //  Server.getPool(Server.Type_Socket_Pool).execute(new Thread(new socketDataReader(stream)));
+                  Thread readData = new Thread(new socketDataReader(stream));
+                  readData.start();
+      
                 try {
-                    // in case a socket is stuck, move to the next socket after 1000ms
-                    int time = 0;
-                    while (readData.isAlive() && time < 10) {
-                        Thread.sleep(100);
-                        time++;
-                    }
-                    readData.interrupt();
-                } catch (Exception e) {
-                    System.out.println("Join error");
+                    Thread.sleep(2);
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(socketsReader.class.getName()).log(Level.SEVERE, null, ex);
                 }
+                
+                
             }
         }
     }
