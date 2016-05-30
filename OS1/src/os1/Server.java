@@ -17,7 +17,7 @@ import java.util.logging.Logger;
  *
  */
 public class Server implements Runnable {
-
+    
     private ServerSocket serverSocket;
     private final int S, C, M, L, Y;
     private static int randomRange;
@@ -34,7 +34,7 @@ public class Server implements Runnable {
     public static final int Type_Readers_Pool = 3;
     public static final int Type_Writer_Pool = 4;
     public static final int Type_Socket_Pool = 5;
-
+    
     public Server(int S, int C, int M, int L, int Y) {
         this.S = S;
         this.C = C;
@@ -44,26 +44,26 @@ public class Server implements Runnable {
         this.Y = Y;
         initServer();
     }
-
+    
     private void initServer() {
         try {
-            serverSocket = new ServerSocket(45000);
-
+            serverSocket = new ServerSocket(45001);
+            
             S_Pool = new ThreadPool(S);
             Readers_Pool = new ThreadPool(Y);
             Cache_Pool = new ThreadPool(1);
             Writer_Pool = new ThreadPool(1);
-         //   Socket_Pool = new ThreadPool(3);
 
             // A Thread that listens to client Sockets.
             new Thread(new socketsReader(clients)).start();
             new Thread(new socketsReader(clients2)).start();
             new Thread(new socketsReader(clients3)).start();
-
+            
             cache = new Cache(C, M);
             database = new Database(L, C);
-
+            
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println("Error initiating server");
         }
     }
@@ -77,7 +77,7 @@ public class Server implements Runnable {
         Thread.currentThread().setName("Server");
         int clientNumber = 0;
         int location;
-
+        
         while (true) {
             try {
                 Socket clientSocket = serverSocket.accept();
@@ -94,8 +94,9 @@ public class Server implements Runnable {
                         clients3.add(stream);
                         break;
                 }
-
+                
             } catch (Exception e) {
+                e.printStackTrace();
                 System.out.println("Error accepting socket");
             }
         }
@@ -118,27 +119,27 @@ public class Server implements Runnable {
                 return null;
         }
     }
-
+    
     public static int getrandomRange() {
         return randomRange;
     }
-
+    
     public static int getClientsSize() {
         return clients.size();
     }
-
+    
     public static Cache getCache() {
         return cache;
     }
-
+    
     public static Database getDatabase() {
         return database;
     }
-
+    
     public static ReadWriteLock getReadWriteLock() {
         return readWriteLock;
     }
-
+    
     public static void setReadWriteLock(ReadWriteLock readWriteLock) {
         Server.readWriteLock = readWriteLock;
     }
@@ -149,18 +150,18 @@ public class Server implements Runnable {
  * Sockets, and read queries.
  */
 class socketsReader implements Runnable {
-
+    
     private final ArrayList<Streams> clients;
     private Streams stream;
-
+    
     public socketsReader(ArrayList clients) {
         this.clients = clients;
     }
-
+    
     @Override
     public void run() {
         Thread.currentThread().setName("SocketsReader");
-
+        
         while (true) {
             //sleep while there are no clients connected.
             while (clients.isEmpty()) {
@@ -171,17 +172,17 @@ class socketsReader implements Runnable {
             }
             for (int i = 0; i < clients.size(); i++) {
                 stream = clients.get(i);
-              //  Server.getPool(Server.Type_Socket_Pool).execute(new Thread(new socketDataReader(stream)));
-                  Thread readData = new Thread(new socketDataReader(stream));
-                  readData.start();
-      
+                //  Server.getPool(Server.Type_Socket_Pool).execute(new Thread(new socketDataReader(stream)));
+                Thread readData = new Thread(new socketDataReader(stream));
+                readData.start();
+                
                 try {
-                    Thread.sleep(2);
+                    while (readData.isAlive()) {
+                        Thread.sleep((long) 0.1);
+                    }
                 } catch (InterruptedException ex) {
                     Logger.getLogger(socketsReader.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                
-                
+                }                
             }
         }
     }

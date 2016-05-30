@@ -44,7 +44,7 @@ public class Cache {
      * @return the answer - y
      */
     public int search(int x) {
-        lock.lock();
+        // lock.lock();
         try {
             Data data = memory.get(x);
             if (data != null) {
@@ -55,7 +55,7 @@ public class Cache {
             return -1;
         } finally {
             checkForUpdates();
-            lock.unlock();
+            //     lock.unlock();
         }
     }
 

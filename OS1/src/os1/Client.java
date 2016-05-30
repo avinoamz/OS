@@ -94,7 +94,7 @@ public class Client implements Runnable {
     public void run() {
         Thread.currentThread().setName("Client");
         try {
-            socket = new Socket("localhost", 45000);
+            socket = new Socket("localhost", 45001);
             Streams stream = new Streams(socket);
             out = stream.getOut();
             in = stream.getIn();

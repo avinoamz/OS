@@ -52,4 +52,13 @@ public class BlockingQueue {
             lock.unlock();
         }
     }
+
+    public int size() {
+        lock.lock();
+        try {
+            return queue.size();
+        } finally {
+            lock.unlock();
+        }
+    }
 }

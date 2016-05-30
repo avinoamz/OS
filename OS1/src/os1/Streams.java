@@ -16,7 +16,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Streams {
 
-    private final ReentrantLock lock = new ReentrantLock(true);
     private PrintWriter out;
     private BufferedReader in;
 
@@ -45,14 +44,7 @@ public class Streams {
         this.out = out;
     }
 
-    public void send(int msg) {
-        lock.lock();
-        try {
-            out.println(msg);
-        } finally {
-            lock.unlock();
-        }
-    }
+
     
     
 }

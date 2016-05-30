@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Synchronized HashMap. Used for temporary data sturctures.
+ * Synchronized HashMap. Used for temporary data structures.
  */
 public class SyncedHashMap {
 
@@ -26,10 +26,9 @@ public class SyncedHashMap {
             if (value == null) {
                 num.updateZ();
             } else {
-                int temp = value.getZ() + 1;
                 map.remove(num.getX());
                 num.setZ(value.getZ() + 1);
-                map.put(num.getX(), num);
+             //   map.put(num.getX(), num);
             }
             map.put(num.getX(), num);
         } finally {

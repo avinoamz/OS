@@ -38,6 +38,7 @@ public class S_Thread implements Runnable {
             Server.getPool(Server.Type_Cache_Pool).execute(new CacheSearcher(this));
             // waits until cache search is completed.
             semaphore.acquire();
+            
             if (answer != -1) {
                 out.println(answer);
             } else {

@@ -29,24 +29,21 @@ public class Database {
 
     private SyncedHashMap databaseUpdates, cacheUpdates;
     private final ReentrantLock lock = new ReentrantLock(true);
-    private int databaseUpdateSize; // what size?
+    private final int databaseUpdateSize; // what size?
     private int cacheUpdateSize;
     private boolean updateNeeded = false;
     private final int fileSize = 500; // size?
     private final int readSize = Integer.BYTES * 3;
     private final int randomRange;
-    private static final ReadWriteLock locks = Server.getReadWriteLock();
-    private final String folder;
-    private final FileLocks locks2;
+    private final FileLocks locks;
 
     public Database(int range, int size) {
-        this.locks2 = new FileLocks();
-        this.folder = FileSystemView.getFileSystemView().getDefaultDirectory().getPath();
+        this.locks = new FileLocks();
         databaseUpdates = new SyncedHashMap();
         cacheUpdates = new SyncedHashMap();
         this.randomRange = range;
         databaseUpdateSize = 300;
-        cacheUpdateSize = 10;
+        cacheUpdateSize = 5;
     }
 
     /**
@@ -60,12 +57,10 @@ public class Database {
      * @return y
      */
     public int search(int x) {
-        ReadWriteLock fileLock = locks2.get(getFile(x));
+        ReadWriteLock fileLock = locks.get(getFile(x));
         fileLock.ReadLock();
         try {
 
-            //    locks2.get(getFile(x)).ReadLock();
-            //   locks.ReadLock();
             RandomAccessFile file = new RandomAccessFile(getFile(x), "r");
             file.seek(getPosition(x));
             Data data = new Data(file.readInt(), file.readInt(), file.readInt());
@@ -81,7 +76,7 @@ public class Database {
                     cacheUpdates.put(data);
                     if (cacheUpdates.size() > cacheUpdateSize) {
                         setUpdateNeeded(true);
-                        if (cacheUpdateSize < (databaseUpdateSize / 3)) {
+                        if (cacheUpdateSize < (databaseUpdateSize / 10)) {
                             cacheUpdateSize++;
                         }
                     }
@@ -105,7 +100,7 @@ public class Database {
             return generate(x);
         } finally {
             fileLock.ReadUnlock();
-            //   locks2.get(getFile(x)).ReadUnlock();
+            //   locks.get(getFile(x)).ReadUnlock();
             // locks.ReadUnlock();
         }
     }
@@ -123,7 +118,7 @@ public class Database {
         //  lock.lock();
         try {
             Data data;
-            if ((data = databaseUpdates.get(x)) != null) {
+            if ((data = databaseUpdates.get(x)) != null) {                
                 data.updateZ();
                 // System.err.println("TEMP DB response: " + data.toString());
                 return data.getY();
@@ -152,10 +147,10 @@ public class Database {
     public void update() {
 
         try {
-
-            HashMap<Integer, Data> tempMap = databaseUpdates.cloneMap();
-            databaseUpdates.clear();
-            List<Data> list = new ArrayList(tempMap.values());
+            
+          //  HashMap<Integer, Data> tempMap = databaseUpdates.cloneMap();
+            
+            List<Data> list = new ArrayList(databaseUpdates.getValues());
             Collections.sort(list, new Comparator<Data>() {
                 @Override
                 public int compare(Data o1, Data o2) {
@@ -165,7 +160,7 @@ public class Database {
 
             for (int i = 0; i < list.size(); i++) {
 
-                ReadWriteLock fileLock = locks2.get(getFile(list.get(i).getX()));
+                ReadWriteLock fileLock = locks.get(getFile(list.get(i).getX()));
                 fileLock.WriteLock();
 
                 Data data = list.get(i);
@@ -179,15 +174,16 @@ public class Database {
                     i++;
                 } while (i < list.size() && (getFile(list.get(i - 1).getX()).equals(getFile(list.get(i).getX()))));
 
+                i--;
                 file.close();
                 fileLock.WriteUnlock();
             }
-        } catch (Exception e) {
+            databaseUpdates.clear();
+        } catch (Exception e) {           
             e.printStackTrace();
             System.err.println("Error updating database");
         } finally {
-            //unlock all locks ?
-            //    locks.WriteUnlock();
+            // unlock all locks ?
         }
     }
 

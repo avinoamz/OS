@@ -9,7 +9,6 @@ import java.io.File;
 
 /**
  *
- * @author Avinoam
  */
 public class OS1 {
 

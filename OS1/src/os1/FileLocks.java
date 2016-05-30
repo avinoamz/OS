@@ -10,7 +10,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  *
- * @author Avinoam
  */
 public class FileLocks {
 
